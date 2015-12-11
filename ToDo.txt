@@ -1,0 +1,4 @@
+- Allow to enter a restaurant name and see who orders from there
+- Print comments field next to restaurant name
+- Add Blacklist (and and then recommand restaurants who are not in the black list of any of the people selected)
+- Add UI for excel management (add/remove user from a restaurant, add new restaurant, etc.)

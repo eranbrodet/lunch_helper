@@ -1,0 +1,24 @@
+CREATE TABLE IF NOT EXISTS `person` (
+ `id`   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+ `name` TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `restaurant` (
+ `id`   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+ `name` TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `person_to_restaurant` (
+ `person_id`     INTEGER NOT NULL,
+ `restaurant_id` INTEGER NOT NULL,
+ FOREIGN KEY (person_id) REFERENCES person(id)
+ FOREIGN KEY (restaurant_id) REFERENCES restaurant(id)
+);
+
+CREATE INDEX IF NOT EXISTS `person_to_restaurant_person_id` ON `person_to_restaurant` (`person_id` ASC);
+CREATE INDEX IF NOT EXISTS `person_to_restaurant_restaurant_id` ON `person_to_restaurant` (`restaurant_id` ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS `restaurant_id` ON `restaurant` (`id` ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS `person_id` ON `person` (`id` ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS `restaurant_name` ON `restaurant` (`name` ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS `person_name` ON `person` (`name` ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS `person_to_restaurant_combination` ON `person_to_restaurant` (`restaurant_id` ASC, `person_id` ASC);
