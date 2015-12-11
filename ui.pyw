@@ -3,6 +3,7 @@ from sys import platform
 from Tkinter import BOTH, W, N, E, S, END, DISABLED  # Positions, States, and Directions
 from Tkinter import Tk, Text, Label, PhotoImage, Listbox, StringVar  # Elements
 from ttk import Frame, Scrollbar, Style, Notebook, Combobox, Button
+import tkMessageBox
 from lunch import FoodFinder
 
 
@@ -122,7 +123,12 @@ class FoodFinderUi(Frame, object): #TODO Rename
         user = self.box_value.get().strip()
         if not user:
             return
-        self.food_finder.add_user(user)
+
+        try:
+            self.food_finder.add_user(user)
+        except Exception: #TODO catch specific exceptions and handle appropriately
+            tkMessageBox.showerror("Adding a person failed", "Adding person failed, either this person already exits or connecting to the database failed")
+            return
         #TODO show message if failed
         #TODO Eran only add if succes or simply reload list
         self.combo['values'] += (user,)
@@ -132,7 +138,12 @@ class FoodFinderUi(Frame, object): #TODO Rename
         res = self.new_restaurant.get("1.0", END).strip()
         if not res:
             return
-        self.food_finder.add_restaurant(res)
+
+        try:
+            self.food_finder.add_restaurant(res)
+        except Exception: #TODO catch specific exceptions and handle appropriately
+            tkMessageBox.showerror("Adding a restaurant failed", "Adding restaurant failed, either this restaurant already exist or connecting to the database failed")
+            return
         #TODO show message if failed
         #TODO Eran only add if succes or simply reload list
         self.restaurants_list.insert(END, res)
@@ -141,7 +152,11 @@ class FoodFinderUi(Frame, object): #TODO Rename
         #TODO Eran verify user exists maybe don't use the combo box for text in[ut
         user = self.box_value.get().strip()
         selected_restaurants = [self.all_restaurants[int(x)].lower() for x in self.restaurants_list.curselection()]
-        self.food_finder.add_user_to_restaurants(user, selected_restaurants)
+        try:
+            self.food_finder.add_user_to_restaurants(user, selected_restaurants)
+        except Exception: #TODO catch specific exceptions and handle appropriately
+            tkMessageBox.showerror("Adding user to restaurant failed", "Adding user to restaurant failed, either we failed to connect to the database, or the user or one of the restaurants doesn't exist or the mapping already exists")
+            return
         #TODO Eran update lists
 
     def _loading_sequence(self):

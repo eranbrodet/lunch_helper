@@ -7,6 +7,11 @@ from itertools import chain
 
 
 class DB(object):
+    """Any function can throw sqlite3.OperationalError if database is locked for too long."""
+
+    # temporary custom exception until error handling is well defined
+    class DBException(Exception): pass
+
     def __init__(self):
         self.con = sqlite3 .connect('lunch.db')
         with self.con:
@@ -34,22 +39,28 @@ class DB(object):
         return list(chain(*names))
 
     def add_person_to_restaurants(self, person, restaurants_list):
-        #TODO Eran what happens if person exists?
+        """Add a person to the restaurants in the given list.
+
+        Throws DB.DBException if either the person name or one of the restaurant names is not found
+        Thows sqlite3.IntegrityError if a mapping between person and one of the restaurants already exists
+        """
         with self.con:
-            self.con.execute("INSERT INTO person_to_restaurant(person_id, restaurant_id) "
-                             "SELECT person.id, restaurant.id FROM person, restaurant "
-                             "WHERE restaurant.name in (" + ("?,"*len(restaurants_list))[:-1] + ") AND person.name=?;",
-                             list(chain(restaurants_list, [person])))
+            question_marks = ", ".join("?" * len(restaurants_list))
+            cur = self.con.execute("INSERT INTO person_to_restaurant(person_id, restaurant_id) "
+                                    "SELECT person.id, restaurant.id FROM person, restaurant "
+                                    "WHERE restaurant.name in (" + question_marks + ") AND person.name=?;",
+                                    list(chain(restaurants_list, [person])))
+            if cur.rowcount != len(restaurants_list):
+                raise DB.DBException("Person (%s) or one or more restaurants (%s) don't exist" % (person, ', '.join(restaurants_list)))
 
     def add_restaurant(self, restaurant):
-        #TODO Eran what happens if restaurant exists
+        """Throws sqlite3.IntegrityError if restaurant with that name already exists."""
         with self.con:
             self.con.execute("INSERT INTO restaurant(name) VALUES(?)", (restaurant,))
 
     def add_person(self, name):
-        #TODO Eran what happens if restaurant exists
+        """Throws sqlite3.IntegrityError if person with that name already exists"""
         with self.con:
-            print name
             self.con.execute("INSERT INTO person(name) VALUES(?)", (name,))
 
     def get_all_people(self):
