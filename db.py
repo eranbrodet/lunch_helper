@@ -2,13 +2,10 @@
 import sqlite3
 from itertools import chain
 
-#TODO Add ui for adding stuff
-#TODO delete excel
-
 
 class DB(object):
     def __init__(self):
-        self.con = sqlite3 .connect('lunch.db')
+        self.con = sqlite3.connect('lunch.db')
         with self.con:
             self.con.execute("""PRAGMA foreign_keys = ON;""")
             cur = self.con.cursor()

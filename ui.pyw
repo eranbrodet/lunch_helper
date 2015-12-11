@@ -67,9 +67,9 @@ class FoodFinderUi(Frame, object): #TODO Rename
         Label(self.people_tab, text='Coming soon').pack(fill=BOTH, expand=1)
 
         # Define db tab elements
-        #TODO bad font jumbled text (http://stackoverflow.com/q/34220597/2134702)
-        self.restaurants_list = Listbox(self.db_tab, selectmode='multiple', exportselection=0)
-
+        # Setting font since the default is weird and jumbles-up hebrew with apostrophe (stackoverflow.com/q/34220597/2134702)
+        #TODO Test font thing on different OS's
+        self.restaurants_list = Listbox(self.db_tab, selectmode='multiple', exportselection=0, font=('Tahoma', 8))
         self.restaurants_list_scrollbar = Scrollbar(self.db_tab, command=self.restaurants_list.yview)
         self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set
         chose_rests_label = Label(self.db_tab, text="Choose restaurants\n(showing only ones\nyou haven't selected)")
@@ -112,7 +112,7 @@ class FoodFinderUi(Frame, object): #TODO Rename
 
     def _user_selected(self, event):
         user = self.box_value.get()
-        available_restaurants = set(self.all_restaurants) - set(self.food_finder.find_food(set([user])))
+        available_restaurants = set(self.all_restaurants) - set(self.food_finder.find_food({user}))
         self.restaurants_list.delete(0, END)
         for item in available_restaurants:
             self.restaurants_list.insert(END, item)
