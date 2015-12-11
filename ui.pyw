@@ -1,4 +1,5 @@
 from os.path import join
+from sys import platform
 from Tkinter import BOTH, W, N, E, S, END, DISABLED  # Positions, States, and Directions
 from Tkinter import Tk, Text, Label, PhotoImage, Listbox, StringVar  # Elements
 from ttk import Frame, Scrollbar, Style, Notebook, Combobox, Button
@@ -185,7 +186,14 @@ def main():
     root = Tk()
     root.geometry("700x390+200+200")
     root.minsize(700, 390)
-    root.iconbitmap(join("images", 'daffy.ico'))
+    
+    #set the root icon, for some reason Linux acts a bit special here. See http://stackoverflow.com/a/11180300/2134702
+    if platform == "linux" or platform == "linux2":
+        img = PhotoImage(file=join("images", 'daffy.png'))
+        root.tk.call('wm', 'iconphoto', root._w, img)
+    else:
+        root.iconbitmap(join("images", 'daffy.ico'))
+
     root.title("F00D")
     FoodFinderUi(root)
 
