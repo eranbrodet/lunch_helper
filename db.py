@@ -4,10 +4,11 @@ from itertools import chain
 
 
 class DB(object):
-    """Any function can throw sqlite3.OperationalError if database is locked for too long."""
+    """
+        Any function can throw sqlite3.OperationalError if database is locked for too long.
+    """
 
-    # temporary custom exception until error handling is well defined
-    class DBException(Exception): pass
+    class DBException(Exception): pass # Temporary custom exception until error handling is well defined
 
     def __init__(self):
         self.con = sqlite3.connect('lunch.db')
@@ -36,10 +37,11 @@ class DB(object):
         return list(chain(*names))
 
     def add_person_to_restaurants(self, person, restaurants_list):
-        """Add a person to the restaurants in the given list.
+        """
+            Add a person to the restaurants in the given list.
 
-        Throws DB.DBException if either the person name or one of the restaurant names is not found
-        Thows sqlite3.IntegrityError if a mapping between person and one of the restaurants already exists
+            Throws DB.DBException if either the person name or one of the restaurant names is not found
+            Thows sqlite3.IntegrityError if a mapping between person and one of the restaurants already exists
         """
         with self.con:
             question_marks = ", ".join("?" * len(restaurants_list))
@@ -51,12 +53,16 @@ class DB(object):
                 raise DB.DBException("Person (%s) or one or more restaurants (%s) don't exist" % (person, ', '.join(restaurants_list)))
 
     def add_restaurant(self, restaurant):
-        """Throws sqlite3.IntegrityError if restaurant with that name already exists."""
+        """
+            Throws sqlite3.IntegrityError if restaurant with that name already exists.
+        """
         with self.con:
             self.con.execute("INSERT INTO restaurant(name) VALUES(?)", (restaurant,))
 
     def add_person(self, name):
-        """Throws sqlite3.IntegrityError if person with that name already exists"""
+        """
+            Throws sqlite3.IntegrityError if person with that name already exists
+        """
         with self.con:
             self.con.execute("INSERT INTO person(name) VALUES(?)", (name,))
 

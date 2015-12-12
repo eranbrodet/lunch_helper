@@ -4,10 +4,11 @@ from Tkinter import BOTH, W, N, E, S, END, DISABLED  # Positions, States, and Di
 from Tkinter import Tk, Text, Label, PhotoImage, Listbox, StringVar  # Elements
 from ttk import Frame, Scrollbar, Style, Notebook, Combobox, Button
 import tkMessageBox
-from lunch import FoodFinder
+from cross_referencer import CrossReferencer
+from db import DB
 
 
-class FoodFinderUi(Frame, object): #TODO Rename
+class LunchHelperUI(Frame, object):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -40,7 +41,7 @@ class FoodFinderUi(Frame, object): #TODO Rename
         self.restaurants_text_box['yscrollcommand'] = restaurants_scrollbar.set
 
         self.names_list = Listbox(self.restaurants_tab, selectmode='multiple', exportselection=0)
-        for person in self.all_people:
+        for person in self._db.get_all_people():
             self.names_list.insert(END, person.title())
         self.names_list.bind("<<ListboxSelect>>", self.calc_list)
         names_scrollbar = Scrollbar(self.restaurants_tab, command=self.names_list.yview)
@@ -78,7 +79,7 @@ class FoodFinderUi(Frame, object): #TODO Rename
         combo_label = Label(self.db_tab, text="Choose user")
         self.box_value = StringVar()
         self.combo = Combobox(self.db_tab, textvariable=self.box_value)
-        self.combo['values'] = self.all_people
+        self.combo['values'] = self._db.get_all_people()
         self.combo.bind("<<ComboboxSelected>>", self._user_selected)
         add_person_button = Button(self.db_tab, text="Add new user")
         add_person_button.bind("<Button-1>", self._add_person_to_db)
@@ -113,47 +114,44 @@ class FoodFinderUi(Frame, object): #TODO Rename
 
     def _user_selected(self, event):
         user = self.box_value.get()
-        available_restaurants = set(self.all_restaurants) - set(self.food_finder.find_food({user}))
+        available_restaurants = set(self._db.get_all_restaurants()) - set(CrossReferencer.find_restaurants({user}))
         self.restaurants_list.delete(0, END)
         for item in available_restaurants:
             self.restaurants_list.insert(END, item)
 
     def _add_person_to_db(self, event):
-        #TODO verify user is new (if not popup a message)
         user = self.box_value.get().strip()
         if not user:
             return
 
         try:
-            self.food_finder.add_user(user)
-        except Exception: #TODO catch specific exceptions and handle appropriately
+            self._db.add_person(user)
+        except Exception as e: #TODO catch specific exceptions and handle appropriately
+            print e
             tkMessageBox.showerror("Adding a person failed", "Adding person failed, either this person already exits or connecting to the database failed")
             return
-        #TODO show message if failed
         #TODO Eran only add if succes or simply reload list
         self.combo['values'] += (user,)
 
     def _add_restaurant_to_db(self, event):
-        #TODO verify user is new (if not popup a message)
-        res = self.new_restaurant.get("1.0", END).strip()
-        if not res:
+        restaurant = self.new_restaurant.get("1.0", END).strip()
+        if not restaurant:
             return
 
         try:
-            self.food_finder.add_restaurant(res)
+            self._db.add_restaurant(restaurant)
         except Exception: #TODO catch specific exceptions and handle appropriately
             tkMessageBox.showerror("Adding a restaurant failed", "Adding restaurant failed, either this restaurant already exist or connecting to the database failed")
             return
-        #TODO show message if failed
         #TODO Eran only add if succes or simply reload list
-        self.restaurants_list.insert(END, res)
+        self.restaurants_list.insert(END, restaurant)
 
     def _add_user_to_restaurants_in_db(self, event):
-        #TODO Eran verify user exists maybe don't use the combo box for text in[ut
         user = self.box_value.get().strip()
-        selected_restaurants = [self.all_restaurants[int(x)].lower() for x in self.restaurants_list.curselection()]
+
+        selected_restaurants = [self._db.get_all_restaurants()[int(x)].lower() for x in self.restaurants_list.curselection()]
         try:
-            self.food_finder.add_user_to_restaurants(user, selected_restaurants)
+            self._db.add_person_to_restaurants(user, selected_restaurants)
         except Exception: #TODO catch specific exceptions and handle appropriately
             tkMessageBox.showerror("Adding user to restaurant failed", "Adding user to restaurant failed, either we failed to connect to the database, or the user or one of the restaurants doesn't exist or the mapping already exists")
             return
@@ -169,9 +167,7 @@ class FoodFinderUi(Frame, object): #TODO Rename
         self.parent.update_idletasks()
         self.parent.update()
         # Do work
-        self.food_finder = FoodFinder()
-        self.all_people = self.food_finder.get_all_people()
-        self.all_restaurants = self.food_finder.get_all_restaurants()
+        self._db = DB()
         # Remove label before continuing
         loading_label.pack_forget()
 
@@ -181,8 +177,8 @@ class FoodFinderUi(Frame, object): #TODO Rename
             :param event: ignored
         """
         try:
-            selected_people = [self.all_people[int(x)].lower() for x in self.names_list.curselection()]
-            results = self.food_finder.find_food(set(selected_people))
+            selected_people = [self._db.get_all_people()[int(x)].lower() for x in self.names_list.curselection()]
+            results = CrossReferencer.find_restaurants(set(selected_people))
         except:
             results = []
 
@@ -217,7 +213,7 @@ def main():
         root.iconbitmap(join("images", 'daffy.ico'))
 
     root.title("F00D")
-    FoodFinderUi(root)
+    LunchHelperUI(root)
 
 
 if __name__ == '__main__':
