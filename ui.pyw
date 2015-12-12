@@ -1,3 +1,5 @@
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
 from os.path import join
 from sys import platform
 from Tkinter import BOTH, W, N, E, S, END, DISABLED  # Positions, States, and Directions
@@ -14,148 +16,38 @@ class LunchHelperUI(Frame, object):
         self.parent = parent
         self._loading_sequence()
         self.init_ui()
-        self.calc_list(None)
         self.parent.mainloop()
 
     def init_ui(self):
+        # Init style
         self.style = Style()
         style = 'xpnative' if 'xpnative' in self.style.theme_names() else 'default'
         self.style.theme_use(style)
+        # Layout this frame
         self.pack(fill=BOTH, expand=1)
 
         # Define tabbed view
-        #TODO extract frames to classes?
-        self.notebook = Notebook(self.parent)
-        self.restaurants_tab = Frame(self.notebook)
-        self.people_tab = Frame(self.notebook)
-        self.db_tab = Frame(self.notebook)
-        self.notebook.add(self.restaurants_tab, text='Find restaurants')
-        self.notebook.add(self.people_tab, text='Find people')
-        self.notebook.add(self.db_tab, text='Manage DB')
-        self.notebook.pack(expand=1, fill=BOTH)   #TODO tabs don't resize on Y
+        notebook = Notebook(self.parent)
+        self._tabs = OrderedDict((('Find restaurants', RestaurantsTab(notebook, self._db)),
+                           ('Find people', PeopleTab(notebook, self._db)),
+                           ('Manage DB', DbTab(notebook, self._db))))
+        for tab_name, tab in self._tabs.iteritems():
+            notebook.add(tab, text=tab_name)
+            tab.init_ui()
+            tab.layout_ui()
+        notebook.bind('<Button-1>', self._refresh_tab_on_change)
+        notebook.pack(expand=1, fill=BOTH)   #TODO tabs don't resize on Y
+        # Initial state
+        self._current_tab = 0
+        self._tabs[self._tabs.keys()[0]].refresh()
 
-        # Define UI elements of first tab
-        self.restaurants_text_box = Text(self.restaurants_tab)
-        self.restaurants_text_box.config(state=DISABLED)
-        restaurants_scrollbar = Scrollbar(self.restaurants_tab, command=self.restaurants_text_box.yview)
-        self.restaurants_text_box['yscrollcommand'] = restaurants_scrollbar.set
-
-        self.names_list = Listbox(self.restaurants_tab, selectmode='multiple', exportselection=0)
-        for person in self._db.get_all_people():
-            self.names_list.insert(END, person.title())
-        self.names_list.bind("<<ListboxSelect>>", self.calc_list)
-        names_scrollbar = Scrollbar(self.restaurants_tab, command=self.names_list.yview)
-        self.names_list['yscrollcommand'] = names_scrollbar.set
-
-        self.daffy = Label(self.restaurants_tab, bg="white")
-        self.daffy.daffy = PhotoImage(file=join("images", 'daffy.gif'))
-        self.daffy.daffy_i = PhotoImage(file=join("images", 'daffy_i.gif'))
-        self.daffy.bind("<Button-1>", self.flip_daffy)
-        self.flip_daffy(None)  # Load the first image
-
-        # Define resizing of elements when window is resized
-        self.restaurants_tab.columnconfigure(0, weight=1)
-        self.restaurants_tab.columnconfigure(2, weight=5)
-        self.restaurants_tab.rowconfigure(0, weight=1)
-
-        # Arrange all the elements on the tab
-        self.names_list.grid(row=0, column=0, sticky=E + W + S + N)
-        names_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
-        self.restaurants_text_box.grid(row=0, column=2, sticky=E + W + S + N)
-        self.daffy.grid(row=0, column=2, sticky=E + S)
-        restaurants_scrollbar.grid(row=0, column=3, sticky=E + W + S + N)
-
-        # Define people tab elements
-        Label(self.people_tab, text='Coming soon').pack(fill=BOTH, expand=1)
-
-        # Define db tab elements
-        # Setting font since the default is weird and jumbles-up hebrew with apostrophe (stackoverflow.com/q/34220597/2134702)
-        #TODO Test font thing on different OS's
-        self.restaurants_list = Listbox(self.db_tab, selectmode='multiple', exportselection=0, font=('Tahoma', 8))
-        self.restaurants_list_scrollbar = Scrollbar(self.db_tab, command=self.restaurants_list.yview)
-        self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set
-        chose_rests_label = Label(self.db_tab, text="Choose restaurants\n(showing only ones\nyou haven't selected)")
-
-        combo_label = Label(self.db_tab, text="Choose user")
-        self.box_value = StringVar()
-        self.combo = Combobox(self.db_tab, textvariable=self.box_value)
-        self.combo['values'] = self._db.get_all_people()
-        self.combo.bind("<<ComboboxSelected>>", self._user_selected)
-        add_person_button = Button(self.db_tab, text="Add new user")
-        add_person_button.bind("<Button-1>", self._add_person_to_db)
-
-        new_rest_label = Label(self.db_tab, text="New restaurant")
-        self.new_restaurant = Text(self.db_tab, height=1, width=18)
-        add_restaurant_button = Button(self.db_tab, text="Add new restaurant")
-        add_restaurant_button.bind("<Button-1>", self._add_restaurant_to_db)
-
-        add_user_restaurants_button = Button(self.db_tab, text="Add restaurants to user")
-        add_user_restaurants_button.bind("<Button-1>", self._add_user_to_restaurants_in_db)
-
-        self.db_tab.columnconfigure(0, weight=0)
-        self.db_tab.columnconfigure(1, weight=0)
-        self.db_tab.columnconfigure(2, weight=0)
-        self.db_tab.columnconfigure(3, weight=0)
-        self.db_tab.columnconfigure(4, weight=1)
-        self.db_tab.rowconfigure(0, weight=0)
-        self.db_tab.rowconfigure(1, weight=0)
-        self.db_tab.rowconfigure(2, weight=1)
-
-        combo_label.grid(row=0, column=0, sticky=E + N)
-        self.combo.grid(row=0, column=1, sticky=W + N)
-        add_person_button.grid(row=0, column=3, sticky=W + N)
-        new_rest_label.grid(row=1, column=0, sticky=E + N)
-        self.new_restaurant.grid(row=1, column=1, sticky=W + N)
-        add_restaurant_button.grid(row=1, column=3, sticky=W + N)
-        chose_rests_label.grid(row=2, column=0, sticky=E + N)
-        self.restaurants_list.grid(row=2, column=1, sticky=W + E + S + N)
-        self.restaurants_list_scrollbar.grid(row=2, column=2, sticky=W + S + N)
-        add_user_restaurants_button.grid(row=2, column=3, sticky=W + N)
-
-    def _user_selected(self, event):
-        user = self.box_value.get()
-        available_restaurants = set(self._db.get_all_restaurants()) - set(CrossReferencer.find_restaurants({user}))
-        self.restaurants_list.delete(0, END)
-        for item in available_restaurants:
-            self.restaurants_list.insert(END, item)
-
-    def _add_person_to_db(self, event):
-        user = self.box_value.get().strip()
-        if not user:
-            return
-
-        try:
-            self._db.add_person(user)
-        except Exception as e: #TODO catch specific exceptions and handle appropriately
-            print e
-            tkMessageBox.showerror("Adding a person failed", "Adding person failed, either this person already exits or connecting to the database failed")
-            return
-        #TODO Eran only add if succes or simply reload list
-        self.combo['values'] += (user,)
-
-    def _add_restaurant_to_db(self, event):
-        restaurant = self.new_restaurant.get("1.0", END).strip()
-        if not restaurant:
-            return
-
-        try:
-            self._db.add_restaurant(restaurant)
-        except Exception: #TODO catch specific exceptions and handle appropriately
-            tkMessageBox.showerror("Adding a restaurant failed", "Adding restaurant failed, either this restaurant already exist or connecting to the database failed")
-            return
-        #TODO Eran only add if succes or simply reload list
-        self.restaurants_list.insert(END, restaurant)
-
-    def _add_user_to_restaurants_in_db(self, event):
-        user = self.box_value.get().strip()
-
-        selected_restaurants = [self._db.get_all_restaurants()[int(x)].lower() for x in self.restaurants_list.curselection()]
-        try:
-            self._db.add_person_to_restaurants(user, selected_restaurants)
-        except Exception: #TODO catch specific exceptions and handle appropriately
-            tkMessageBox.showerror("Adding user to restaurant failed", "Adding user to restaurant failed, either we failed to connect to the database, or the user or one of the restaurants doesn't exist or the mapping already exists")
-            return
-        #TODO Eran update lists
+    def _refresh_tab_on_change(self, event):
+        if event.widget.identify(event.x, event.y) == 'label':
+            index = event.widget.index('@%d,%d' % (event.x, event.y))
+            if index != self._current_tab:
+                self._current_tab = index
+                key = event.widget.tab(index, 'text')
+                self._tabs[key].refresh()
 
     def _loading_sequence(self):
         """
@@ -171,13 +63,66 @@ class LunchHelperUI(Frame, object):
         # Remove label before continuing
         loading_label.pack_forget()
 
-    def calc_list(self, event):
+
+class Tab(Frame, object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, parent, db):
+        Frame.__init__(self, parent)
+        self._db = db
+
+    @abstractmethod
+    def refresh(self): pass
+    @abstractmethod
+    def init_ui(self): pass
+    @abstractmethod
+    def layout_ui(self): pass
+
+
+class RestaurantsTab(Tab):
+    def init_ui(self):
+        self.restaurants_text_box = Text(self)
+        self.restaurants_text_box.config(state=DISABLED)
+        self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_text_box.yview)
+        self.restaurants_text_box['yscrollcommand'] = self.restaurants_scrollbar.set
+
+        self.people_list = Listbox(self, selectmode='multiple', exportselection=0)
+        self.people_list.bind("<<ListboxSelect>>", self._calc_list)
+        self.people_scrollbar = Scrollbar(self, command=self.people_list.yview)
+        self.people_list['yscrollcommand'] = self.people_scrollbar.set
+
+        self.daffy = Label(self, bg="white")
+        self.daffy.daffy = PhotoImage(file=join("images", 'daffy.gif'))
+        self.daffy.daffy_i = PhotoImage(file=join("images", 'daffy_i.gif'))
+        self.daffy.bind("<Button-1>", self._flip_daffy)
+
+        # Define resizing of elements when window is resized
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(2, weight=5)
+        self.rowconfigure(0, weight=1)
+
+    def layout_ui(self):
+        # Arrange all the elements on the tab
+        self.people_list.grid(row=0, column=0, sticky=E + W + S + N)
+        self.people_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
+        self.restaurants_text_box.grid(row=0, column=2, sticky=E + W + S + N)
+        self.daffy.grid(row=0, column=2, sticky=E + S)
+        self.restaurants_scrollbar.grid(row=0, column=3, sticky=E + W + S + N)
+
+    def refresh(self):
+        self.people_list.delete(0, END)
+        for person in self._db.get_all_people():
+            self.people_list.insert(END, person.title())
+        self._flip_daffy(None)  # Load the first image
+        self._calc_list(None)
+
+    def _calc_list(self, event):
         """
             Calculates the list of restaurants for the selected people and updates the text box
             :param event: ignored
         """
         try:
-            selected_people = [self._db.get_all_people()[int(x)].lower() for x in self.names_list.curselection()]
+            selected_people = [self._db.get_all_people()[int(x)].lower() for x in self.people_list.curselection()]
             results = CrossReferencer.find_restaurants(set(selected_people))
         except:
             results = []
@@ -187,7 +132,7 @@ class LunchHelperUI(Frame, object):
         self.restaurants_text_box.insert(END, "\n".join(results))
         self.restaurants_text_box.configure(state='disabled')
 
-    def flip_daffy(self, event):
+    def _flip_daffy(self, event):
         """
             :param event: Ignored except when its bool value is false
                         For recognising the initial load.
@@ -198,6 +143,107 @@ class LunchHelperUI(Frame, object):
         else:
             self.daffy.configure(image=self.daffy.daffy_i)
             self.daffy.image = self.daffy.daffy_i
+
+
+class PeopleTab(Tab):
+    def init_ui(self):
+        self.coming_soon = Label(self, text='Coming soon')
+
+    def layout_ui(self):
+        self.coming_soon.pack(fill=BOTH, expand=1)
+
+    def refresh(self):
+        pass
+
+
+class DbTab(Tab):
+    def init_ui(self):
+        # Setting font since the default is weird and jumbles-up hebrew with apostrophe (stackoverflow.com/q/34220597/2134702)
+        self.restaurants_list = Listbox(self, selectmode='multiple', exportselection=0, font=('Tahoma', 8))
+        self.restaurants_list_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
+        self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set
+        self.choose_restaurants_label = Label(self, text="Choose restaurants\n(showing only ones\nyou haven't added)")
+
+        self.choose_user_label = Label(self, text="Choose user")
+        self.choose_user_value = StringVar()
+        self.choose_user_combobox = Combobox(self, textvariable=self.choose_user_value)
+        self.choose_user_combobox.bind("<<ComboboxSelected>>", self._user_selected)
+        self.add_person_button = Button(self, text="Add new user")
+        self.add_person_button.bind("<Button-1>", self._add_person_to_db)
+
+        self.new_restaurant_label = Label(self, text="New restaurant")
+        self.new_restaurant = Text(self, height=1, width=18)
+        self.add_restaurant_button = Button(self, text="Add new restaurant")
+        self.add_restaurant_button.bind("<Button-1>", self._add_restaurant_to_db)
+
+        self.add_user_restaurants_button = Button(self, text="Add restaurants to user")
+        self.add_user_restaurants_button.bind("<Button-1>", self._add_user_to_restaurants_in_db)
+
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=0)
+        self.columnconfigure(2, weight=0)
+        self.columnconfigure(3, weight=0)
+        self.columnconfigure(4, weight=1)
+        self.rowconfigure(0, weight=0)
+        self.rowconfigure(1, weight=0)
+        self.rowconfigure(2, weight=1)
+
+    def layout_ui(self):
+        self.choose_user_label.grid(row=0, column=0, sticky=E + N)
+        self.choose_user_combobox.grid(row=0, column=1, sticky=W + N)
+        self.add_person_button.grid(row=0, column=3, sticky=W + N)
+        self.new_restaurant_label.grid(row=1, column=0, sticky=E + N)
+        self.new_restaurant.grid(row=1, column=1, sticky=W + N)
+        self.add_restaurant_button.grid(row=1, column=3, sticky=W + N)
+        self.choose_restaurants_label.grid(row=2, column=0, sticky=E + N)
+        self.restaurants_list.grid(row=2, column=1, sticky=W + E + S + N)
+        self.restaurants_list_scrollbar.grid(row=2, column=2, sticky=W + S + N)
+        self.add_user_restaurants_button.grid(row=2, column=3, sticky=W + N)
+
+    def refresh(self):
+        self.choose_user_combobox['values'] = self._db.get_all_people()
+        self._user_selected(None)
+
+    def _user_selected(self, event):
+        user = self.choose_user_value.get()
+        if not user:
+            return
+        available_restaurants = set(self._db.get_all_restaurants()) - set(CrossReferencer.find_restaurants({user}))
+        self.restaurants_list.delete(0, END)
+        for item in available_restaurants:
+            self.restaurants_list.insert(END, item)
+
+    def _add_person_to_db(self, event):
+        user = self.choose_user_value.get().strip()
+        if not user:
+            return
+        try:
+            self._db.add_person(user)
+            self.refresh()
+        except Exception as e:  #TODO catch specific exceptions and handle appropriately
+            tkMessageBox.showerror("Adding a person failed", "Either this person already exits or connecting to the database failed")
+            return
+
+    def _add_restaurant_to_db(self, event):
+        restaurant = self.new_restaurant.get("1.0", END).strip()
+        if not restaurant:
+            return
+        try:
+            self._db.add_restaurant(restaurant)
+            self.refresh()
+        except Exception:  #TODO catch specific exceptions and handle appropriately
+            tkMessageBox.showerror("Adding a restaurant failed", "Either this restaurant already exist or connecting to the database failed")
+            return
+
+    def _add_user_to_restaurants_in_db(self, event):
+        user = self.choose_user_value.get().strip()
+        selected_restaurants = [self._db.get_all_restaurants()[int(x)].lower() for x in self.restaurants_list.curselection()]
+        try:
+            self._db.add_person_to_restaurants(user, selected_restaurants)
+            self.refresh()
+        except Exception: #TODO catch specific exceptions and handle appropriately
+            tkMessageBox.showerror("Adding user to restaurants failed", "Either we failed to connect to the database, or the user or one of the restaurants doesn't exist or the mapping already exists")
+            return
 
 
 def main():
