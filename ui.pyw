@@ -36,19 +36,15 @@ class LunchHelperUI(Frame, object):
             notebook.add(tab, text=tab_name)
             tab.init_ui()
             tab.layout_ui()
-        notebook.bind('<Button-1>', self._refresh_tab_on_change)
+        notebook.bind("<<NotebookTabChanged>>", self._refresh_tab_on_change)
         notebook.pack(expand=1, fill=BOTH)   #TODO tabs don't resize on Y
         # Initial state
         self._current_tab = 0
         self._tabs[self._tabs.keys()[0]].refresh()
 
     def _refresh_tab_on_change(self, event):
-        if event.widget.identify(event.x, event.y) in ['label', 'tab', 'focus']:
-            index = event.widget.index('@%d,%d' % (event.x, event.y))
-            if index != self._current_tab:
-                self._current_tab = index
-                key = event.widget.tab(index, 'text')
-                self._tabs[key].refresh()
+        tab = event.widget.tab(event.widget.select(), "text")
+        self._tabs[tab].refresh()
 
     def _loading_sequence(self):
         """
@@ -82,8 +78,7 @@ class Tab(Frame, object):
 
 class RestaurantsTab(Tab):
     def init_ui(self):
-        self.restaurants_text_box = Text(self)
-        self.restaurants_text_box.config(state=DISABLED)
+        self.restaurants_text_box = Text(self, background='white', state=DISABLED)
         self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_text_box.yview)
         self.restaurants_text_box['yscrollcommand'] = self.restaurants_scrollbar.set
 
