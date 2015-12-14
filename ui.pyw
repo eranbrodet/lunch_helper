@@ -2,9 +2,9 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from os.path import join
 from sys import platform
-from Tkinter import BOTH, W, N, E, S, END, DISABLED  # Positions, States, and Directions
+from Tkinter import BOTH, W, N, E, S, END, DISABLED, VERTICAL, LEFT  # Positions, States, and Directions
 from Tkinter import Tk, Text, Label, PhotoImage, Listbox, StringVar  # Elements
-from ttk import Frame, Scrollbar, Style, Notebook, Combobox, Button
+from ttk import Frame, Scrollbar, Style, Notebook, Separator, Button
 import tkMessageBox
 from Tkinter import Toplevel
 from cross_referencer import CrossReferencer
@@ -40,7 +40,6 @@ class LunchHelperUI(Frame, object):
         notebook.pack(expand=1, fill=BOTH)
         # Initial state
         self._current_tab = 0
-        self._tabs[self._tabs.keys()[0]].refresh()
 
     def _refresh_tab_on_change(self, event):
         tab = event.widget.tab(event.widget.select(), "text")
@@ -61,6 +60,9 @@ class LunchHelperUI(Frame, object):
         loading_label.pack_forget()
 
 
+#######################################################################################
+####################################### Tabs  #########################################
+#######################################################################################
 class Tab(Frame, object):
     __metaclass__ = ABCMeta
 
@@ -82,7 +84,7 @@ class RestaurantsTab(Tab):
         self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_text_box.yview)
         self.restaurants_text_box['yscrollcommand'] = self.restaurants_scrollbar.set
 
-        self.people_list = Listbox(self, selectmode='multiple', exportselection=0)
+        self.people_list = Listbox(self, selectmode='multiple', exportselection=0, activestyle='none')
         self.people_list.bind("<<ListboxSelect>>", self._calc_list)
         self.people_scrollbar = Scrollbar(self, command=self.people_list.yview)
         self.people_list['yscrollcommand'] = self.people_scrollbar.set
@@ -108,7 +110,7 @@ class RestaurantsTab(Tab):
     def refresh(self):
         self.people_list.delete(0, END)
         for person in self._db.get_all_people():
-            self.people_list.insert(END, person.title())
+            self.people_list.insert(END, person)
         self._flip_daffy(None)  # Load the first image
         self._calc_list(None)
 
@@ -118,9 +120,13 @@ class RestaurantsTab(Tab):
             :param event: ignored
         """
         try:
-            selected_people = [self._db.get_all_people()[int(x)] for x in self.people_list.curselection()]
-            results = CrossReferencer.find_restaurants(set(selected_people))
-        except:
+            indices = self.people_list.curselection()
+            selected_people = set()
+            for index in indices:
+                selected_people.add(self.people_list.get(index))
+            results = CrossReferencer.find_restaurants(selected_people)
+        except Exception as e:
+            print "exception", e
             results = []
 
         self.restaurants_text_box.configure(state='normal')
@@ -154,61 +160,56 @@ class PeopleTab(Tab):
 
 class DbTab(Tab):
     def init_ui(self):
-        # Setting font since the default is weird and jumbles-up hebrew with apostrophe (stackoverflow.com/q/34220597/2134702)
-        self.restaurants_list = Listbox(self, selectmode='multiple', exportselection=0, font=('Tahoma', 8))
+        self.choose_user_label = Label(self, text="Choose user", padx=5)
+        self.users_list = Listbox(self, selectmode='single', exportselection=0, activestyle='none', font=('Tahoma', 8))
+        self.users_list_scrollbar = Scrollbar(self, command=self.users_list.yview)
+        self.users_list['yscrollcommand'] = self.users_list_scrollbar.set
+        self.add_person_button = Button(self, text="Add new user", width=16, command=self._add_person_to_db)
+        self.edit_person_button = Button(self, text="Edit user", width=16, command=self._edit_person_in_db)
+        self.delete_person_button = Button(self, text="Delete user", width=16, command=self._delete_user_from_db)
+
+        self.separator = Separator(self, orient=VERTICAL)
+
+        self.choose_restaurant_label = Label(self, text="Choose restaurant", padx=5)
+        self.restaurants_list = Listbox(self, selectmode='single', exportselection=0, activestyle='none', font=('Tahoma', 8))
         self.restaurants_list_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
         self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set
-        self.choose_restaurants_label = Label(self, text="Choose restaurants\n(showing only ones\nyou haven't added)")
+        self.add_restaurant_button = Button(self, text="Add new restaurant", width=18, command=self._add_restaurant_to_db)
+        self.delete_restaurant_button = Button(self, text="Delete restaurant", width=18, command=self._delete_restaurant_from_db)
 
-        self.choose_user_label = Label(self, text="Choose user")
-        self.choose_user_value = StringVar()
-        self.choose_user_combobox = Combobox(self, textvariable=self.choose_user_value, state='readonly')
-        self.choose_user_combobox.bind("<<ComboboxSelected>>", self._user_selected)
-        self.add_person_button = Button(self, text="Add new user", command=self._add_person_to_db)
-        self.edit_person_button = Button(self, text="Edit user", command=self._edit_person_in_db)
-
-        self.new_restaurant_label = Label(self, text="New restaurant")
-        self.new_restaurant = Text(self, height=1, width=18)
-        self.add_restaurant_button = Button(self, text="Add new restaurant")
-        self.add_restaurant_button.bind("<Button-1>", self._add_restaurant_to_db)
-
-        self.add_user_restaurants_button = Button(self, text="Add restaurants to user")
-        self.add_user_restaurants_button.bind("<Button-1>", self._add_user_to_restaurants_in_db)
-
-        self.columnconfigure(0, weight=0)
-        self.columnconfigure(1, weight=0)
-        self.columnconfigure(2, weight=0)
-        self.columnconfigure(3, weight=0)
+        self.columnconfigure(0, weight=2)
+        self.columnconfigure(1, weight=1)
         self.columnconfigure(4, weight=1)
-        self.rowconfigure(0, weight=0)
+        self.columnconfigure(6, weight=1)
+        self.columnconfigure(8, weight=2)
+        self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=0)
-        self.rowconfigure(2, weight=1)
+        self.rowconfigure(2, weight=0)
+        self.rowconfigure(3, weight=4)
+        self.rowconfigure(4, weight=4)
 
     def layout_ui(self):
-        self.choose_user_label.grid(row=0, column=0, sticky=E + N)
-        self.choose_user_combobox.grid(row=0, column=1, sticky=W + N)
-        self.add_person_button.grid(row=0, column=3, sticky=W + N)
-        self.edit_person_button.grid(row=1, column=3, sticky=W + N)
-        self.new_restaurant_label.grid(row=1, column=0, sticky=E + N)
-        self.new_restaurant.grid(row=1, column=1, sticky=W + N)
-        self.choose_restaurants_label.grid(row=2, column=0, sticky=E + N)
-        self.restaurants_list.grid(row=2, column=1, sticky=W + E + S + N)
-        self.restaurants_list_scrollbar.grid(row=2, column=2, sticky=W + S + N)
-        self.add_restaurant_button.grid(row=2, column=3, sticky=W + N)
-        self.add_user_restaurants_button.grid(row=2, column=3, sticky=W + N)
+        self.choose_user_label.grid(row=1, column=0, sticky=N + E)
+        self.users_list.grid(row=1, column=1, rowspan=3, sticky=N + E + S + W)
+        self.users_list_scrollbar.grid(row=1, column=2, rowspan=3, sticky=N + E + S)
+        self.add_person_button.grid(row=1, column=3, sticky=N + E)
+        self.edit_person_button.grid(row=2, column=3, sticky=N + E)
+        self.delete_person_button.grid(row=3, column=3, sticky=N + E)
+
+        self.separator.grid(row=0, column=4, rowspan=5, sticky=N + S)
+
+        self.choose_restaurant_label.grid(row=1, column=5, sticky=N + W)
+        self.restaurants_list.grid(row=1, column=6, rowspan=3, sticky=N + W + S + E)
+        self.restaurants_list_scrollbar.grid(row=1, column=7, rowspan=3, sticky=N + W + S)
+        self.add_restaurant_button.grid(row=1, column=8, sticky=N + W)
+        self.delete_restaurant_button.grid(row=2, column=8, sticky=N + W)
 
     def refresh(self):
-        self.choose_user_combobox['values'] = self._db.get_all_people()
-        self.choose_user_combobox.set("")
-        self._user_selected(None)
-
-    def _user_selected(self, event):
-        user = self.choose_user_value.get()
-        if not user:
-            return
-        available_restaurants = set(self._db.get_all_restaurants()) - set(CrossReferencer.find_restaurants({user}))
+        self.users_list.delete(0, END)
+        for user in self._db.get_all_people():
+            self.users_list.insert(END, user)
         self.restaurants_list.delete(0, END)
-        for item in available_restaurants:
+        for item in self._db.get_all_restaurants():
             self.restaurants_list.insert(END, item)
 
     def _add_person_to_db(self):
@@ -216,36 +217,40 @@ class DbTab(Tab):
         self.wait_window(dialogue)
 
     def _edit_person_in_db(self):
-        user = self.choose_user_value.get().strip()
-        if not user:
-            tkMessageBox.showinfo("User must be selected", "Please select a user from the combo box")
+        index = self.users_list.curselection()
+        if not index:
+            tkMessageBox.showinfo("User must be selected", "Please select a user from the list")
             return
-
+        user = self.users_list.get(index).strip()
         dialogue = EditUserDialogue(self, self._db, user)
         self.wait_window(dialogue)
 
-    def _add_restaurant_to_db(self, event):
-        restaurant = self.new_restaurant.get("1.0", END).strip()
-        if not restaurant:
-            return
-        try:
-            self._db.add_restaurant(restaurant)
-            self.refresh()
-        except Exception:  #TODO catch specific exceptions and handle appropriately
-            tkMessageBox.showerror("Adding a restaurant failed", "Either this restaurant already exist or connecting to the database failed")
-            return
+    def _add_restaurant_to_db(self):
+        dialogue = AddRestaurantDialogue(self, self._db)
+        self.wait_window(dialogue)
 
-    def _add_user_to_restaurants_in_db(self, event):
-        user = self.choose_user_value.get().strip()
-        selected_restaurants = [self._db.get_all_restaurants()[int(x)].lower() for x in self.restaurants_list.curselection()]
-        try:
-            self._db.add_person_to_restaurants(user, selected_restaurants)
-            self.refresh()
-        except Exception: #TODO catch specific exceptions and handle appropriately
-            tkMessageBox.showerror("Adding user to restaurants failed", "Either we failed to connect to the database, or the user or one of the restaurants doesn't exist or the mapping already exists")
+    def _delete_restaurant_from_db(self):
+        index = self.restaurants_list.curselection()
+        if not index:
+            tkMessageBox.showinfo("Restaurant must be selected", "Please select a restaurant from the list")
             return
+        restaurant = self.restaurants_list.get(index).strip()
+        dialogue = DeleteRestaurantDialogue(self, self._db, restaurant)
+        self.wait_window(dialogue)
+
+    def _delete_user_from_db(self):
+        index = self.users_list.curselection()
+        if not index:
+            tkMessageBox.showinfo("User must be selected", "Please select a User from the list")
+            return
+        user = self.users_list.get(index).strip()
+        dialogue = DeleteUserDialogue(self, self._db, user)
+        self.wait_window(dialogue)
 
 
+#######################################################################################
+################################## User Dialogues #####################################
+#######################################################################################
 class UserDialogue(Toplevel, object):
     __metaclass__ = ABCMeta
     @abstractmethod
@@ -263,7 +268,7 @@ class UserDialogue(Toplevel, object):
         self.transient(parent)  # Makes this window a child of the parent
 
         # Setting font since the default is weird and jumbles-up hebrew with apostrophe (stackoverflow.com/q/34220597/2134702)
-        self.restaurants_list = Listbox(self, selectmode='multiple', exportselection=0, font=('Tahoma', 8))
+        self.restaurants_list = Listbox(self, selectmode='multiple', activestyle='none', exportselection=0, font=('Tahoma', 8))
         self.restaurants_list_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
         self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set
         self.choose_restaurants_label = Label(self, text="Restaurants:")
@@ -273,7 +278,7 @@ class UserDialogue(Toplevel, object):
 
         self.ok_button = Button(self, text="OK", command=self._ok_button)
         self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
-
+        #TODO go over these
         self.columnconfigure(0, weight=0)
         self.columnconfigure(1, weight=0)
         self.columnconfigure(2, weight=0)
@@ -283,7 +288,7 @@ class UserDialogue(Toplevel, object):
         self.rowconfigure(1, weight=0)
         self.rowconfigure(2, weight=1)
 
-        #layout
+        # Layout
         self.user_label.grid(row=0, column=0, sticky=E + N)
         self.user_text.grid(row=0, column=1, sticky=W + N)
         self.choose_restaurants_label.grid(row=2, column=0, sticky=E + N)
@@ -292,7 +297,7 @@ class UserDialogue(Toplevel, object):
         self.ok_button.grid(row=3, column=1, sticky=E + S + N)
         self.cancel_button.grid(row=3, column=2, sticky=W + S + N)
 
-        #fill up fields
+        # Fill up fields
         available_restaurants = set(self._db.get_all_restaurants())
         self.restaurants_list.delete(0, END)
         for item in available_restaurants:
@@ -317,12 +322,16 @@ class AddUserDialogue(UserDialogue):
 
         if not person_name:
             tkMessageBox.showerror("Adding a person failed", "Person name cannot be empty!")
-            return
+            return #TODO This should not close dialogue
 
-        selected_restaurants = [self._db.get_all_restaurants()[int(x)] for x in self.restaurants_list.curselection()]
+        indices = self.restaurants_list.curselection()
+        selected_restaurants = set()
+        for index in indices:
+            selected_restaurants.add(self.restaurants_list.get(index))
         try:
             self._db.add_person(person_name)
             self._db.add_person_to_restaurants(person_name, selected_restaurants)
+            self.parent.refresh()
         except Exception as e:
             tkMessageBox.showerror("Adding a person failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
@@ -362,6 +371,148 @@ class EditUserDialogue(UserDialogue):
                 self.restaurants_list.selection_set(i)
 
 
+class DeleteUserDialogue(Toplevel, object): #TODO Eran dedup with DeleteRestaurantDialogue?
+    def __init__(self, parent, db, name):
+        Toplevel.__init__(self, parent)
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty()
+        self.geometry("+%d+%d" % (x, y))
+        self.parent = parent
+        self._db = db
+        self.transient(parent)  # Makes this window a child of the parent
+        self.name = name
+
+        self.label = Label(self, justify=LEFT, font=('Helvetica', 15), text="Are you sure you want to delete %s?\n"
+                                      "This will remove it and all the restaurants he/she are connected to.\n"
+                                      "This operation is not reversible!" % (name,))
+        self.ok_button = Button(self, text="Delete", command=self._ok_button)
+        self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
+
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=0)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=0)
+
+        #layout
+        self.label.grid(row=0, column=0, sticky=E + N)
+        self.cancel_button.grid(row=1, column=0, sticky=E + S)
+        self.ok_button.grid(row=1, column=1, sticky=E + S)
+
+        self.wait_visibility()
+        self.grab_set()  # Makes window modal
+
+    def _cancel_button(self):
+        self.destroy()
+
+    def _ok_button(self):
+        try:
+            self._db.delete_person(self.name)
+            self.parent.refresh()
+            self.destroy()
+        except Exception as e:
+            tkMessageBox.showerror("Deleting a restauran failed", "Operation failed!")
+            print 'GOT AN EXCEPTION!' + str(e)
+
+
+#######################################################################################
+################################## Restaurants Dialogues ##############################
+#######################################################################################
+class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
+    def __init__(self, parent, db):
+        Toplevel.__init__(self, parent)
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty()
+        self.geometry("+%d+%d" % (x, y))
+        self.parent = parent
+        self._db = db
+        self.transient(parent)  # Makes this window a child of the parent
+
+        self.restaurant_label = Label(self, text="Restaurant Name:")
+        self.restaurant_text = Text(self, height=1, width=18) #TODO maybe constrict this to single line?
+        self.ok_button = Button(self, text="OK", command=self._ok_button)
+        self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
+
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=0)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=0)
+
+        #layout
+        self.restaurant_label.grid(row=0, column=0, sticky=E + N)
+        self.restaurant_text.grid(row=0, column=1, sticky=W + N + E + S)
+        self.cancel_button.grid(row=1, column=1, sticky=E + S)
+        self.ok_button.grid(row=1, column=2, sticky=E + S)
+
+        self.wait_visibility()
+        self.grab_set()  # Makes window modal
+
+    def _cancel_button(self):
+        self.destroy()
+
+    def _ok_button(self):
+        restaurant_name = self.restaurant_text.get("1.0", END).strip()
+
+        if not restaurant_name:
+            tkMessageBox.showerror("Adding a person failed", "Person name cannot be empty!")
+            return
+        try:
+            self._db.add_restaurant(restaurant_name)
+            self.parent.refresh()
+            self.destroy()
+        except Exception as e:
+            tkMessageBox.showerror("Adding a person failed", "Operation failed!")
+            print 'GOT AN EXCEPTION!' + str(e)
+
+
+class DeleteRestaurantDialogue(Toplevel, object): #TODO Eran dedup with AddRestaurantDialogue
+    def __init__(self, parent, db, name):
+        Toplevel.__init__(self, parent)
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty()
+        self.geometry("+%d+%d" % (x, y))
+        self.parent = parent
+        self._db = db
+        self.transient(parent)  # Makes this window a child of the parent
+        self.name = name
+
+        self.label = Label(self, justify=LEFT, font=('Helvetica', 15), text="Are you sure you want to delete %s?\n"
+                                      "This will remove it from all users that are connected to it.\n"
+                                      "This operation is not reversible!" % (name,))
+        self.ok_button = Button(self, text="Delete", command=self._ok_button)
+        self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
+
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=0)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=0)
+
+        #layout
+        self.label.grid(row=0, column=0, sticky=E + N)
+        self.cancel_button.grid(row=1, column=0, sticky=E + S)
+        self.ok_button.grid(row=1, column=1, sticky=E + S)
+
+        self.wait_visibility()
+        self.grab_set()  # Makes window modal
+
+    def _cancel_button(self):
+        self.destroy()
+
+    def _ok_button(self):
+        try:
+            self._db.delete_restaurant(self.name)
+            self.parent.refresh()
+            self.destroy()
+        except Exception as e:
+            tkMessageBox.showerror("Deleting a restauran failed", "Operation failed!")
+            print 'GOT AN EXCEPTION!' + str(e)
+
+
+#######################################################################################
+######################################### Main ########################################
+#######################################################################################
 def main():
     root = Tk()
     root.geometry("700x390+200+200")

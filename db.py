@@ -61,8 +61,7 @@ class DB(object):
 
     def delete_all_restaurants_from_user(self, user_name):
         with self.con:
-            cur = self.con.execute("DELETE FROM person_to_restaurant WHERE person_id=(select id from person where name=?)", (user_name,))
-
+            self.con.execute("DELETE FROM person_to_restaurant WHERE person_id=(select id from person where name=?)", (user_name,))
 
     def add_restaurant(self, restaurant):
         """
@@ -85,3 +84,15 @@ class DB(object):
     def get_all_restaurants(self):
         with self.con:
             return list(chain(*self.con.execute("SELECT name FROM restaurant").fetchall()))
+
+    def delete_restaurant(self, name):
+        with self.con:
+            cur = self.con.execute("DELETE FROM restaurant WHERE name=?", (name,))
+            if cur.rowcount != 1:
+                raise DB.DBException("Restaurant %s is not in database" % (name,))
+
+    def delete_person(self, name):
+        with self.con:
+            cur = self.con.execute("DELETE FROM person WHERE name=?", (name,))
+            if cur.rowcount != 1:
+                raise DB.DBException("Person %s is not in database" % (name,))
