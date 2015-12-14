@@ -43,7 +43,7 @@ class LunchHelperUI(Frame, object):
         self._tabs[self._tabs.keys()[0]].refresh()
 
     def _refresh_tab_on_change(self, event):
-        if event.widget.identify(event.x, event.y) == 'label':
+        if event.widget.identify(event.x, event.y) in ['label', 'tab', 'focus']:
             index = event.widget.index('@%d,%d' % (event.x, event.y))
             if index != self._current_tab:
                 self._current_tab = index
@@ -203,8 +203,8 @@ class DbTab(Tab):
         self.add_user_restaurants_button.grid(row=2, column=3, sticky=W + N)
 
     def refresh(self):
-        #TODO: clear combo box text
         self.choose_user_combobox['values'] = self._db.get_all_people()
+        self.choose_user_combobox.set("")
         self._user_selected(None)
 
     def _user_selected(self, event):
@@ -250,6 +250,7 @@ class DbTab(Tab):
             tkMessageBox.showerror("Adding user to restaurants failed", "Either we failed to connect to the database, or the user or one of the restaurants doesn't exist or the mapping already exists")
             return
 
+
 class UserDialogue(Toplevel, object):
     __metaclass__ = ABCMeta
     @abstractmethod
@@ -259,6 +260,9 @@ class UserDialogue(Toplevel, object):
 
     def __init__(self, parent, db):
         Toplevel.__init__(self, parent)
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty()
+        self.geometry("+%d+%d" % (x, y))
         self.parent = parent
         self._db = db
         self.transient(parent)  # Makes this window a child of the parent
@@ -311,6 +315,7 @@ class UserDialogue(Toplevel, object):
     def _cancel_button(self):
         self.destroy()
 
+
 class AddUserDialogue(UserDialogue):
     def button_ok_action(self):
         person_name = self.user_text.get("1.0", END).strip()
@@ -329,6 +334,7 @@ class AddUserDialogue(UserDialogue):
 
     def fill_initial_values(self):
         pass
+
 
 class EditUserDialogue(UserDialogue):
     def __init__(self, parent, db, user_name):
@@ -359,7 +365,6 @@ class EditUserDialogue(UserDialogue):
         for i, restaurant in enumerate(all_restaurants):
             if restaurant in restaurants:
                 self.restaurants_list.selection_set(i)
-
 
 
 def main():
