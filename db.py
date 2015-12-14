@@ -45,12 +45,24 @@ class DB(object):
         """
         with self.con:
             question_marks = ", ".join("?" * len(restaurants_list))
-            cur = self.con.execute("INSERT INTO person_to_restaurant(person_id, restaurant_id) "
-                                    "SELECT person.id, restaurant.id FROM person, restaurant "
-                                    "WHERE restaurant.name in (" + question_marks + ") AND person.name=?;",
-                                    list(chain(restaurants_list, [person])))
+            sql = "INSERT INTO person_to_restaurant(person_id, restaurant_id) " \
+                                    "SELECT person.id, restaurant.id FROM person, restaurant " \
+                                    "WHERE restaurant.name in (" + question_marks + ") AND person.name=?;"
+            cur = self.con.execute(sql, list(chain(restaurants_list, [person])))
             if cur.rowcount != len(restaurants_list):
+                print sql
                 raise DB.DBException("Person (%s) or one or more restaurants (%s) don't exist" % (person, ', '.join(restaurants_list)))
+
+    def change_person_name(self, old_name, new_name):
+        with self.con:
+            cur = self.con.execute("UPDATE person set name=? WHERE name=?", (new_name, old_name))
+            if cur.rowcount != 1:
+                raise DB.DBException("Person (%s) not found" % (old_name,))
+
+    def delete_all_restaurants_from_user(self, user_name):
+        with self.con:
+            cur = self.con.execute("DELETE FROM person_to_restaurant WHERE person_id=(select id from person where name=?)", (user_name,))
+
 
     def add_restaurant(self, restaurant):
         """
