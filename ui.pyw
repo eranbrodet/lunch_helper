@@ -25,7 +25,7 @@ class LunchHelperUI(Frame, object):
         style = 'xpnative' if 'xpnative' in self.style.theme_names() else 'default'
         self.style.theme_use(style)
         # Layout this frame
-        self.pack(fill=BOTH, expand=1)
+        self.grid(row=0, column=0, sticky=N+S+W+E)
 
         # Define tabbed view
         notebook = Notebook(self.parent)
@@ -37,7 +37,7 @@ class LunchHelperUI(Frame, object):
             tab.init_ui()
             tab.layout_ui()
         notebook.bind("<<NotebookTabChanged>>", self._refresh_tab_on_change)
-        notebook.pack(expand=1, fill=BOTH)   #TODO tabs don't resize on Y
+        notebook.pack(expand=1, fill=BOTH)
         # Initial state
         self._current_tab = 0
         self._tabs[self._tabs.keys()[0]].refresh()
