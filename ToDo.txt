@@ -1,5 +1,3 @@
 - Allow to enter a restaurant name and see who orders from there
 - Add comments field to restaurant and show it in the find restaurants ui
 - Add Blacklist (and and then recommand restaurants who are not in the black list of any of the people selected)
-- Manage db user box should be read only, adding should be done from dedicated windows popuped from the buttons
-- Add deletion opeartions to db management
