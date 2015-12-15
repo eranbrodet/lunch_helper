@@ -466,6 +466,8 @@ class RestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         self.restaurant_label = Label(self, text="Restaurant Name:")
         self.restaurant_text = Text(self, height=1, width=18, wrap=NONE)
         self.restaurant_text.bind('<Return>', self._restaurant_text_enter)
+        self.comment_label = Label(self, text="Comment:")
+        self.comment_text = Text(self, height=5, width=18, wrap=NONE)
         self.ok_button = Button(self, text="OK", command=self._ok_button)
         self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
 
@@ -478,8 +480,10 @@ class RestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         #layout
         self.restaurant_label.grid(row=0, column=0, sticky=E + N)
         self.restaurant_text.grid(row=0, column=1, sticky=W + N + E + S)
-        self.cancel_button.grid(row=1, column=1, sticky=E + S)
-        self.ok_button.grid(row=1, column=2, sticky=E + S)
+        self.comment_label.grid(row=1, column=0, sticky=E + S)
+        self.comment_text.grid(row=1, column=1, sticky=W + N + E + S)
+        self.cancel_button.grid(row=2, column=1, sticky=E + S)
+        self.ok_button.grid(row=2, column=2, sticky=E + S)
 
         self.fill_initial_values()
 
@@ -502,12 +506,13 @@ class AddRestaurantDialogue(RestaurantDialogue, object):
 
     def button_ok_action(self):
         restaurant_name = self.restaurant_text.get("1.0", END).strip()
+        restaurant_comment = self.comment_text.get("1.0", END).strip()
 
         if not restaurant_name:
             tkMessageBox.showerror("Editing a restaurant failed", "Restaurant name cannot be empty!")
             return False
         try:
-            self._db.add_restaurant(restaurant_name)
+            self._db.add_restaurant(restaurant_name, restaurant_comment)
             self.parent.refresh()
         except Exception as e:
             tkMessageBox.showerror("Adding a restaurant failed", "Operation failed!")
@@ -521,11 +526,13 @@ class AddRestaurantDialogue(RestaurantDialogue, object):
 class EditRestaurantDialogue(RestaurantDialogue, object):
     def __init__(self, parent, db, restaurant_name):
         self.restaurant_name = restaurant_name
+        self.restaurant_comment = db.get_restaurant_comment(restaurant_name)
         super(self.__class__, self).__init__(parent, db)
 
     def button_ok_action(self):
         new_restaurant_name = self.restaurant_text.get("1.0", END).strip()
-        if self.restaurant_name == new_restaurant_name:
+        new_restaurant_comment = self.comment_text.get("1.0", END).strip()
+        if self.restaurant_name == new_restaurant_name and self.restaurant_comment == new_restaurant_comment:
             # no need to update anything
             return True
 
@@ -533,7 +540,7 @@ class EditRestaurantDialogue(RestaurantDialogue, object):
             tkMessageBox.showerror("Editing a restaurant failed", "Restaurant name cannot be empty!")
             return False
         try:
-            self._db.change_restaurant_name(self.restaurant_name, new_restaurant_name)
+            self._db.update_restaurant(self.restaurant_name, new_restaurant_name, new_restaurant_comment)
             self.parent.refresh()
         except Exception as e:
             tkMessageBox.showerror("Editing a restaurant failed", "Operation failed!")
@@ -543,6 +550,7 @@ class EditRestaurantDialogue(RestaurantDialogue, object):
 
     def fill_initial_values(self):
         self.restaurant_text.insert(END, self.restaurant_name)
+        self.comment_text.insert(END, self.restaurant_comment)
 
 class DeleteRestaurantDialogue(Toplevel, object): #TODO Eran dedup with AddRestaurantDialogue
     def __init__(self, parent, db, name):

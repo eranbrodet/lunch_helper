@@ -59,9 +59,9 @@ class DB(object):
             if cur.rowcount != 1:
                 raise DB.DBException("Person (%s) not found" % (old_name,))
 
-    def change_restaurant_name(self, old_restaurant_name, new_restaurant_name):
+    def update_restaurant(self, old_restaurant_name, new_restaurant_name, new_restaurant_comment):
         with self.con:
-            cur = self.con.execute("UPDATE restaurant set name=? WHERE name=?", (new_restaurant_name, old_restaurant_name))
+            cur = self.con.execute("UPDATE restaurant set name=?, comment=? WHERE name=?", (new_restaurant_name, new_restaurant_comment, old_restaurant_name))
             if cur.rowcount != 1:
                 raise DB.DBException("Restaurant (%s) not found" % (old_restaurant_name,))
 
@@ -69,12 +69,19 @@ class DB(object):
         with self.con:
             self.con.execute("DELETE FROM person_to_restaurant WHERE person_id=(select id from person where name=?)", (user_name,))
 
-    def add_restaurant(self, restaurant):
+    def add_restaurant(self, restaurant_name, restaurant_comment):
         """
             Throws sqlite3.IntegrityError if restaurant with that name already exists.
         """
         with self.con:
-            self.con.execute("INSERT INTO restaurant(name) VALUES(?)", (restaurant,))
+            self.con.execute("INSERT INTO restaurant(name, comment) VALUES(?, ?)", (restaurant_name,restaurant_comment))
+
+    def get_restaurant_comment(self, restaurant_name):
+        with self.con:
+            comments = list(chain(*self.con.execute("SELECT comment FROM restaurant WHERE name=?", (restaurant_name,)).fetchall()))
+            if len(comments) != 1:
+                raise DB.DBException("Restaurant (%s) not found" % (restaurant_name,))
+            return comments[0]
 
     def add_person(self, name):
         """

@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS `person` (
 
 CREATE TABLE IF NOT EXISTS `restaurant` (
  `id`   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
- `name` TEXT NOT NULL
+ `name` TEXT NOT NULL,
+ `comment` TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS `person_to_restaurant` (
