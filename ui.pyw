@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from os.path import join
 from sys import platform
-from Tkinter import BOTH, W, N, E, S, END, DISABLED, VERTICAL, LEFT  # Positions, States, and Directions
+from Tkinter import BOTH, W, N, E, S, END, DISABLED, VERTICAL, LEFT, NONE  # Positions, States, and Directions
 from Tkinter import Tk, Text, Label, PhotoImage, Listbox, StringVar  # Elements
 from ttk import Frame, Scrollbar, Style, Notebook, Separator, Button
 import tkMessageBox
@@ -24,8 +24,6 @@ class LunchHelperUI(Frame, object):
         self.style = Style()
         style = 'xpnative' if 'xpnative' in self.style.theme_names() else 'default'
         self.style.theme_use(style)
-        # Layout this frame
-        self.grid(row=0, column=0, sticky=N+S+W+E)
 
         # Define tabbed view
         notebook = Notebook(self.parent)
@@ -191,6 +189,7 @@ class DbTab(Tab):
     def layout_ui(self):
         self.choose_user_label.grid(row=1, column=0, sticky=N + E)
         self.users_list.grid(row=1, column=1, rowspan=3, sticky=N + E + S + W)
+        self.users_list.bind('<Double-Button-1>', self._user_list_doubleclick)
         self.users_list_scrollbar.grid(row=1, column=2, rowspan=3, sticky=N + E + S)
         self.add_person_button.grid(row=1, column=3, sticky=N + E)
         self.edit_person_button.grid(row=2, column=3, sticky=N + E)
@@ -215,6 +214,9 @@ class DbTab(Tab):
     def _add_person_to_db(self):
         dialogue = AddUserDialogue(self, self._db)
         self.wait_window(dialogue)
+
+    def _user_list_doubleclick(self, event):
+        self._edit_person_in_db()
 
     def _edit_person_in_db(self):
         index = self.users_list.curselection()
@@ -274,7 +276,8 @@ class UserDialogue(Toplevel, object):
         self.choose_restaurants_label = Label(self, text="Restaurants:")
 
         self.user_label = Label(self, text="Person Name:")
-        self.user_text = Text(self, height=1, width=18)
+        self.user_text = Text(self, height=1, width=18, wrap=NONE)
+        self.user_text.bind('<Return>', self._user_text_enter)
 
         self.ok_button = Button(self, text="OK", command=self._ok_button)
         self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
@@ -307,6 +310,9 @@ class UserDialogue(Toplevel, object):
 
         self.wait_visibility()
         self.grab_set()  # Makes window modal
+
+    def _user_text_enter(self, event):
+        self._ok_button()
 
     def _ok_button(self):
         self.button_ok_action()
@@ -411,13 +417,14 @@ class DeleteUserDialogue(Toplevel, object): #TODO Eran dedup with DeleteRestaura
             self.parent.refresh()
             self.destroy()
         except Exception as e:
-            tkMessageBox.showerror("Deleting a restauran failed", "Operation failed!")
+            tkMessageBox.showerror("Deleting a restaurant failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
 
 
 #######################################################################################
 ################################## Restaurants Dialogues ##############################
 #######################################################################################
+#TODO: Add dialogue for editing restaurant name
 class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
     def __init__(self, parent, db):
         Toplevel.__init__(self, parent)
@@ -429,7 +436,8 @@ class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         self.transient(parent)  # Makes this window a child of the parent
 
         self.restaurant_label = Label(self, text="Restaurant Name:")
-        self.restaurant_text = Text(self, height=1, width=18) #TODO maybe constrict this to single line?
+        self.restaurant_text = Text(self, height=1, width=18, wrap=NONE)
+        self.restaurant_text.bind('<Return>', self._restaurant_text_enter)
         self.ok_button = Button(self, text="OK", command=self._ok_button)
         self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
 
@@ -450,6 +458,9 @@ class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
 
     def _cancel_button(self):
         self.destroy()
+
+    def _restaurant_text_enter(self, event):
+        self._ok_button()
 
     def _ok_button(self):
         restaurant_name = self.restaurant_text.get("1.0", END).strip()
@@ -506,7 +517,7 @@ class DeleteRestaurantDialogue(Toplevel, object): #TODO Eran dedup with AddResta
             self.parent.refresh()
             self.destroy()
         except Exception as e:
-            tkMessageBox.showerror("Deleting a restauran failed", "Operation failed!")
+            tkMessageBox.showerror("Deleting a restaurant failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
 
 
