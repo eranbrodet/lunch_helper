@@ -357,8 +357,10 @@ class EditUserDialogue(UserDialogue):
         if not person_name:
             tkMessageBox.showerror("Editing person failed", "Person name cannot be empty!")
             return
-
-        selected_restaurants = [self._db.get_all_restaurants()[int(x)] for x in self.restaurants_list.curselection()]
+        selected_restaurants = []
+        indices = self.restaurants_list.curselection()
+        for index in indices:
+            selected_restaurants.append(self.restaurants_list.get(index))
         try:
             if person_name != self.user_name:
                 self._db.change_person_name(self.user_name, person_name)
@@ -370,9 +372,8 @@ class EditUserDialogue(UserDialogue):
 
     def fill_initial_values(self):
         self.user_text.insert(END, self.user_name)
-        all_restaurants = self._db.get_all_restaurants()
         restaurants = self._db.get_restaurants_for_person(self.user_name)
-        for i, restaurant in enumerate(all_restaurants):
+        for i, restaurant in enumerate(self.restaurants_list.get(0, END)):
             if restaurant in restaurants:
                 self.restaurants_list.selection_set(i)
 
