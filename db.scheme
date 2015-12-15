@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS `restaurant` (
 CREATE TABLE IF NOT EXISTS `person_to_restaurant` (
  `person_id`     INTEGER NOT NULL,
  `restaurant_id` INTEGER NOT NULL,
- FOREIGN KEY (person_id) REFERENCES person(id)
- FOREIGN KEY (restaurant_id) REFERENCES restaurant(id)
+ FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
+ FOREIGN KEY (restaurant_id) REFERENCES restaurant(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS `person_to_restaurant_person_id` ON `person_to_restaurant` (`person_id` ASC);
