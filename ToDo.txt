@@ -1,3 +1,5 @@
 - Allow to enter a restaurant name and see who orders from there
-- Add comments field to restaurant and show it in the find restaurants ui
+- Print comments field next to restaurant name
 - Add Blacklist (and and then recommand restaurants who are not in the black list of any of the people selected)
+- When you double click a restaurant in the find restaurants tab, it should take you to find people with this restaurant selected.
+- Add option to add yourself to mailing list and create a client for mailing certain lists
