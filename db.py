@@ -59,6 +59,12 @@ class DB(object):
             if cur.rowcount != 1:
                 raise DB.DBException("Person (%s) not found" % (old_name,))
 
+    def change_restaurant_name(self, old_restaurant_name, new_restaurant_name):
+        with self.con:
+            cur = self.con.execute("UPDATE restaurant set name=? WHERE name=?", (new_restaurant_name, old_restaurant_name))
+            if cur.rowcount != 1:
+                raise DB.DBException("Restaurant (%s) not found" % (old_restaurant_name,))
+
     def delete_all_restaurants_from_user(self, user_name):
         with self.con:
             self.con.execute("DELETE FROM person_to_restaurant WHERE person_id=(select id from person where name=?)", (user_name,))

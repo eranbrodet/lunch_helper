@@ -161,6 +161,7 @@ class DbTab(Tab):
         self.choose_user_label = Label(self, text="Choose user", padx=5)
         self.users_list = Listbox(self, selectmode='single', exportselection=0, activestyle='none', font=('Tahoma', 8))
         self.users_list_scrollbar = Scrollbar(self, command=self.users_list.yview)
+        self.users_list.bind('<Double-Button-1>', self._user_list_doubleclick)
         self.users_list['yscrollcommand'] = self.users_list_scrollbar.set
         self.add_person_button = Button(self, text="Add new user", width=16, command=self._add_person_to_db)
         self.edit_person_button = Button(self, text="Edit user", width=16, command=self._edit_person_in_db)
@@ -170,9 +171,11 @@ class DbTab(Tab):
 
         self.choose_restaurant_label = Label(self, text="Choose restaurant", padx=5)
         self.restaurants_list = Listbox(self, selectmode='single', exportselection=0, activestyle='none', font=('Tahoma', 8))
+        self.restaurants_list.bind('<Double-Button-1>', self._restaurant_list_doubleclick)
         self.restaurants_list_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
         self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set
         self.add_restaurant_button = Button(self, text="Add new restaurant", width=18, command=self._add_restaurant_to_db)
+        self.edit_restaurant_button = Button(self, text="Edit restaurant", width=18, command=self._edit_restaurant_in_db)
         self.delete_restaurant_button = Button(self, text="Delete restaurant", width=18, command=self._delete_restaurant_from_db)
 
         self.columnconfigure(0, weight=2)
@@ -189,7 +192,6 @@ class DbTab(Tab):
     def layout_ui(self):
         self.choose_user_label.grid(row=1, column=0, sticky=N + E)
         self.users_list.grid(row=1, column=1, rowspan=3, sticky=N + E + S + W)
-        self.users_list.bind('<Double-Button-1>', self._user_list_doubleclick)
         self.users_list_scrollbar.grid(row=1, column=2, rowspan=3, sticky=N + E + S)
         self.add_person_button.grid(row=1, column=3, sticky=N + E)
         self.edit_person_button.grid(row=2, column=3, sticky=N + E)
@@ -201,7 +203,8 @@ class DbTab(Tab):
         self.restaurants_list.grid(row=1, column=6, rowspan=3, sticky=N + W + S + E)
         self.restaurants_list_scrollbar.grid(row=1, column=7, rowspan=3, sticky=N + W + S)
         self.add_restaurant_button.grid(row=1, column=8, sticky=N + W)
-        self.delete_restaurant_button.grid(row=2, column=8, sticky=N + W)
+        self.edit_restaurant_button.grid(row=2, column=8, sticky=N + W)
+        self.delete_restaurant_button.grid(row=3, column=8, sticky=N + W)
 
     def refresh(self):
         self.users_list.delete(0, END)
@@ -229,6 +232,18 @@ class DbTab(Tab):
 
     def _add_restaurant_to_db(self):
         dialogue = AddRestaurantDialogue(self, self._db)
+        self.wait_window(dialogue)
+
+    def _restaurant_list_doubleclick(self, event):
+        self._edit_restaurant_in_db()
+
+    def _edit_restaurant_in_db(self):
+        index = self.restaurants_list.curselection()
+        if not index:
+            tkMessageBox.showinfo("Restaurant must be selected", "Please select a restaurant from the list")
+            return
+        restaurant = self.restaurants_list.get(index).strip()
+        dialogue = EditRestaurantDialogue(self, self._db, restaurant)
         self.wait_window(dialogue)
 
     def _delete_restaurant_from_db(self):
@@ -315,8 +330,8 @@ class UserDialogue(Toplevel, object):
         self._ok_button()
 
     def _ok_button(self):
-        self.button_ok_action()
-        self.destroy()
+        if self.button_ok_action():
+            self.destroy()
 
     def _cancel_button(self):
         self.destroy()
@@ -328,19 +343,22 @@ class AddUserDialogue(UserDialogue):
 
         if not person_name:
             tkMessageBox.showerror("Adding a person failed", "Person name cannot be empty!")
-            return #TODO This should not close dialogue
+            return False
 
         indices = self.restaurants_list.curselection()
         selected_restaurants = set()
         for index in indices:
             selected_restaurants.add(self.restaurants_list.get(index))
         try:
+            #TODO these should be all or nothing, meaning we need a transaction here
             self._db.add_person(person_name)
             self._db.add_person_to_restaurants(person_name, selected_restaurants)
             self.parent.refresh()
         except Exception as e:
             tkMessageBox.showerror("Adding a person failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
+            return False
+        return True
 
     def fill_initial_values(self):
         pass
@@ -356,7 +374,8 @@ class EditUserDialogue(UserDialogue):
 
         if not person_name:
             tkMessageBox.showerror("Editing person failed", "Person name cannot be empty!")
-            return
+            return False
+
         selected_restaurants = []
         indices = self.restaurants_list.curselection()
         for index in indices:
@@ -369,6 +388,8 @@ class EditUserDialogue(UserDialogue):
         except Exception as e:
             tkMessageBox.showerror("Editing person failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
+            return False
+        return True
 
     def fill_initial_values(self):
         self.user_text.insert(END, self.user_name)
@@ -426,7 +447,13 @@ class DeleteUserDialogue(Toplevel, object): #TODO Eran dedup with DeleteRestaura
 ################################## Restaurants Dialogues ##############################
 #######################################################################################
 #TODO: Add dialogue for editing restaurant name
-class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
+class RestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
+    __metaclass__ = ABCMeta
+    @abstractmethod
+    def button_ok_action(self): pass
+    @abstractmethod
+    def fill_initial_values(self): pass
+
     def __init__(self, parent, db):
         Toplevel.__init__(self, parent)
         x = parent.winfo_rootx()
@@ -454,6 +481,8 @@ class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         self.cancel_button.grid(row=1, column=1, sticky=E + S)
         self.ok_button.grid(row=1, column=2, sticky=E + S)
 
+        self.fill_initial_values()
+
         self.wait_visibility()
         self.grab_set()  # Makes window modal
 
@@ -464,19 +493,56 @@ class AddRestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         self._ok_button()
 
     def _ok_button(self):
+        if self.button_ok_action():
+            self.destroy()
+
+class AddRestaurantDialogue(RestaurantDialogue, object):
+    def __init__(self, parent, db):
+        super(self.__class__, self).__init__(parent, db)
+
+    def button_ok_action(self):
         restaurant_name = self.restaurant_text.get("1.0", END).strip()
 
         if not restaurant_name:
-            tkMessageBox.showerror("Adding a person failed", "Person name cannot be empty!")
-            return
+            tkMessageBox.showerror("Editing a restaurant failed", "Restaurant name cannot be empty!")
+            return False
         try:
             self._db.add_restaurant(restaurant_name)
             self.parent.refresh()
-            self.destroy()
         except Exception as e:
-            tkMessageBox.showerror("Adding a person failed", "Operation failed!")
+            tkMessageBox.showerror("Adding a restaurant failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
+            return False
+        return True
 
+    def fill_initial_values(self):
+        pass
+
+class EditRestaurantDialogue(RestaurantDialogue, object):
+    def __init__(self, parent, db, restaurant_name):
+        self.restaurant_name = restaurant_name
+        super(self.__class__, self).__init__(parent, db)
+
+    def button_ok_action(self):
+        new_restaurant_name = self.restaurant_text.get("1.0", END).strip()
+        if self.restaurant_name == new_restaurant_name:
+            # no need to update anything
+            return True
+
+        if not new_restaurant_name:
+            tkMessageBox.showerror("Editing a restaurant failed", "Restaurant name cannot be empty!")
+            return False
+        try:
+            self._db.change_restaurant_name(self.restaurant_name, new_restaurant_name)
+            self.parent.refresh()
+        except Exception as e:
+            tkMessageBox.showerror("Editing a restaurant failed", "Operation failed!")
+            print 'GOT AN EXCEPTION!' + str(e)
+            return False
+        return True
+
+    def fill_initial_values(self):
+        self.restaurant_text.insert(END, self.restaurant_name)
 
 class DeleteRestaurantDialogue(Toplevel, object): #TODO Eran dedup with AddRestaurantDialogue
     def __init__(self, parent, db, name):
