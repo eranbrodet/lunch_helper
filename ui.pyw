@@ -385,6 +385,7 @@ class EditUserDialogue(UserDialogue):
                 self._db.change_person_name(self.user_name, person_name)
             self._db.delete_all_restaurants_from_user(person_name)
             self._db.add_person_to_restaurants(person_name, selected_restaurants)
+            self.parent.refresh()
         except Exception as e:
             tkMessageBox.showerror("Editing person failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
