@@ -78,32 +78,52 @@ class Tab(Frame, object):
 
 class RestaurantsTab(Tab):
     def init_ui(self):
-        self.restaurants_list = Listbox(self, exportselection=0, activestyle='none', background='white')
-        self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
-        self.restaurants_list['yscrollcommand'] = self.restaurants_scrollbar.set
-
+        #left side of the window
         self.people_list = Listbox(self, selectmode='multiple', exportselection=0, activestyle='none')
         self.people_list.bind("<<ListboxSelect>>", self._calc_list)
         self.people_scrollbar = Scrollbar(self, command=self.people_list.yview)
         self.people_list['yscrollcommand'] = self.people_scrollbar.set
 
-        self.daffy = Label(self, bg="white")
+        #right side of the window
+        self.rightHandSide = Frame(self)
+        self.restaurants_list = Listbox(self.rightHandSide, exportselection=0, activestyle='none', background='white')
+        self.restaurants_scrollbar = Scrollbar(self.rightHandSide, command=self.restaurants_list.yview)
+        self.restaurants_list['yscrollcommand'] = self.restaurants_scrollbar.set
+        self.restaurants_list.bind('<<ListboxSelect>>', self._view_restaurant)
+
+        self.restaurant_details = Frame(self.rightHandSide)
+        self.restaurant_details_name = Label(self.restaurant_details, text='restaurant name here', font=('Tahoma', 12))
+        self.restaurant_details_comment = Label(self.restaurant_details, text='restaurant comment', justify=LEFT)
+
+
+        self.daffy = Label(self.rightHandSide, bg="white")
         self.daffy.daffy = PhotoImage(file=join("images", 'daffy.gif'))
         self.daffy.daffy_i = PhotoImage(file=join("images", 'daffy_i.gif'))
         self.daffy.bind("<Button-1>", self._flip_daffy)
+
+    def layout_ui(self):
+        # Arrange all the elements on the tab
+        self.people_list.grid(row=0, column=0, sticky=E + W + S + N)
+        self.people_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
+        self.rightHandSide.grid(row=0, column=2, sticky=E + W + S + N)
+
+        self.restaurants_list.grid(row=0, column=0, sticky=E + W + S + N)
+        self.restaurants_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
+        self.restaurant_details.grid(row=1, column=0, sticky=E + W + S + N)
+        self.daffy.grid(row=0, column=0, sticky=E + S, padx=10, pady=10)
 
         # Define resizing of elements when window is resized
         self.columnconfigure(0, weight=1)
         self.columnconfigure(2, weight=5)
         self.rowconfigure(0, weight=1)
 
-    def layout_ui(self):
-        # Arrange all the elements on the tab
-        self.people_list.grid(row=0, column=0, sticky=E + W + S + N)
-        self.people_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
-        self.restaurants_list.grid(row=0, column=2, sticky=E + W + S + N)
-        self.daffy.grid(row=0, column=2, sticky=E + S)
-        self.restaurants_scrollbar.grid(row=0, column=3, sticky=E + W + S + N)
+        # resizing of the right hand side
+        self.rightHandSide.rowconfigure(0, weight=1)
+        self.rightHandSide.columnconfigure(0, weight=1)
+
+
+        self.restaurant_details_name.grid(row=0, column=0, sticky=W  + N)
+        self.restaurant_details_comment.grid(row=1, column=0, sticky=W + N)
 
     def refresh(self):
         self.people_list.delete(0, END)
@@ -111,6 +131,7 @@ class RestaurantsTab(Tab):
             self.people_list.insert(END, person)
         self._flip_daffy(None)  # Load the first image
         self._calc_list(None)
+        self._view_restaurant(None)
 
     def _calc_list(self, event):
         """
@@ -130,6 +151,7 @@ class RestaurantsTab(Tab):
         self.restaurants_list.delete(0, END)
         for restaurant in results:
             self.restaurants_list.insert(END, restaurant)
+        self._view_restaurant(None)
 
     def _flip_daffy(self, event):
         """
@@ -143,6 +165,21 @@ class RestaurantsTab(Tab):
             self.daffy.configure(image=self.daffy.daffy_i)
             self.daffy.image = self.daffy.daffy_i
 
+    def _view_restaurant(self, event):
+        index = self.restaurants_list.curselection()
+        if not index:
+            self.rightHandSide.rowconfigure(0, weight=1)
+            self.rightHandSide.rowconfigure(1, weight=0)
+            self.restaurant_details.grid_forget()
+            return
+        self.rightHandSide.rowconfigure(0, weight=1)
+        self.rightHandSide.rowconfigure(1, weight=1)
+        self.restaurant_details.grid(row=1, column=0, sticky=E + W + S + N)
+        restaurant_name = self.restaurants_list.get(index).strip()
+        restaurant_comment = self._db.get_restaurant_comment(restaurant_name)
+
+        self.restaurant_details_name.config(text=restaurant_name)
+        self.restaurant_details_comment.config(text=restaurant_comment)
 
 class PeopleTab(Tab):
     def init_ui(self):
@@ -366,7 +403,7 @@ class AddUserDialogue(UserDialogue):
 class EditUserDialogue(UserDialogue):
     def __init__(self, parent, db, user_name):
         self.user_name = user_name
-        super(self.__class__, self).__init__(parent, db)
+        super(EditUserDialogue, self).__init__(parent, db)
 
     def button_ok_action(self):
         person_name = self.user_text.get("1.0", END).strip()
@@ -500,9 +537,9 @@ class RestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         if self.button_ok_action():
             self.destroy()
 
-class AddRestaurantDialogue(RestaurantDialogue, object):
+class AddRestaurantDialogue(RestaurantDialogue):
     def __init__(self, parent, db):
-        super(self.__class__, self).__init__(parent, db)
+        super(AddRestaurantDialogue, self).__init__(parent, db)
 
     def button_ok_action(self):
         restaurant_name = self.restaurant_text.get("1.0", END).strip()
@@ -523,11 +560,11 @@ class AddRestaurantDialogue(RestaurantDialogue, object):
     def fill_initial_values(self):
         pass
 
-class EditRestaurantDialogue(RestaurantDialogue, object):
+class EditRestaurantDialogue(RestaurantDialogue):
     def __init__(self, parent, db, restaurant_name):
         self.restaurant_name = restaurant_name
         self.restaurant_comment = db.get_restaurant_comment(restaurant_name)
-        super(self.__class__, self).__init__(parent, db)
+        super(EditRestaurantDialogue, self).__init__(parent, db)
 
     def button_ok_action(self):
         new_restaurant_name = self.restaurant_text.get("1.0", END).strip()
