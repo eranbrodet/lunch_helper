@@ -78,9 +78,9 @@ class Tab(Frame, object):
 
 class RestaurantsTab(Tab):
     def init_ui(self):
-        self.restaurants_text_box = Text(self, background='white', state=DISABLED)
-        self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_text_box.yview)
-        self.restaurants_text_box['yscrollcommand'] = self.restaurants_scrollbar.set
+        self.restaurants_list = Listbox(self, exportselection=0, activestyle='none', background='white')
+        self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
+        self.restaurants_list['yscrollcommand'] = self.restaurants_scrollbar.set
 
         self.people_list = Listbox(self, selectmode='multiple', exportselection=0, activestyle='none')
         self.people_list.bind("<<ListboxSelect>>", self._calc_list)
@@ -101,7 +101,7 @@ class RestaurantsTab(Tab):
         # Arrange all the elements on the tab
         self.people_list.grid(row=0, column=0, sticky=E + W + S + N)
         self.people_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
-        self.restaurants_text_box.grid(row=0, column=2, sticky=E + W + S + N)
+        self.restaurants_list.grid(row=0, column=2, sticky=E + W + S + N)
         self.daffy.grid(row=0, column=2, sticky=E + S)
         self.restaurants_scrollbar.grid(row=0, column=3, sticky=E + W + S + N)
 
@@ -127,10 +127,9 @@ class RestaurantsTab(Tab):
             print "exception", e
             results = []
 
-        self.restaurants_text_box.configure(state='normal')
-        self.restaurants_text_box.delete('1.0', END)
-        self.restaurants_text_box.insert(END, "\n".join(results))
-        self.restaurants_text_box.configure(state='disabled')
+        self.restaurants_list.delete(0, END)
+        for restaurant in results:
+            self.restaurants_list.insert(END, restaurant)
 
     def _flip_daffy(self, event):
         """
