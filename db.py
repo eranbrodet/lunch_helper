@@ -1,22 +1,70 @@
 # -*- coding: utf-8 -*-
 import sqlite3
 from itertools import chain
-
+from os.path import exists
+import json
 
 class DB(object):
     """
         Any function can throw sqlite3.OperationalError if database is locked for too long.
     """
 
+    # Indicates the version of the scheme the program currently uses.
+    # Must be incremented every time the DB scheme is changed and the
+    # appropriate upgrade function must be added to _upgrade_functions
+    CURRENT_DB_SCHEME_VERSION = 0
+    SETTINGS_FILENAME = 'settings.json'
+    DB_FILENAME = 'lunch.db'
+
+    _upgrade_functions = {
+        #example:
+        # 0 : upgrade_to_version_1
+        # where upgrade_to_version_1 must take only the connection as a parameter
+        }
+
     class DBException(Exception): pass # Temporary custom exception until error handling is well defined
 
     def __init__(self):
-        self.con = sqlite3.connect('lunch.db')
+        db_exists = exists(DB.SETTINGS_FILENAME) and exists(DB.DB_FILENAME)
+
+        self.con = sqlite3.connect(DB.DB_FILENAME)
+        db_changed = False
+        if not db_exists:
+            self._create_empty_db()
+            db_changed = True
+        else:
+            db_changed = self._upgrade_db():
+
+        if db_changed:
+            self._write_settings()
+
+    # NOTE: if settings ever contain more stuff we might want to move it out of DB and closer to __main__
+    def _write_settings(self):
+        settings = json.dumps({'settings_version': 0, 'db_scheme_version': DB.CURRENT_DB_SCHEME_VERSION})
+        with open(DB.SETTINGS_FILENAME, 'w') as f:
+            f.write(settings)
+
+
+    def _create_empty_db(self):
+        print 'Create empty DB' #TODO: use logger
         with self.con:
             self.con.execute("""PRAGMA foreign_keys = ON;""")
             cur = self.con.cursor()
             with open("db.scheme") as f:
                 cur.executescript(f.read())
+
+    def _upgrade_db(self):
+        with open(DB.SETTINGS_FILENAME) as f:
+            settings = json.loads(f.read())
+        if settings['db_scheme_version'] == DB.CURRENT_DB_SCHEME_VERSION:
+            return False #no upgrade occurred
+
+        #TODO: do we want to copy the DB before doing this? would help with debugging
+        for upgrade_step in range(settings['db_scheme_version'], DB.CURRENT_DB_SCHEME_VERSION):
+            print 'Upgrade DB from version %d to version %d' % (upgrade_step, upgrade_step + 1) #TODO: use logger
+            _upgrade_functions[upgrade_step](self.conn)
+        return True # we did actually upgrade
+
 
     def get_restaurants_for_person(self, person):
         with self.con:
