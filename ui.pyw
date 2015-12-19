@@ -3,7 +3,7 @@ from collections import OrderedDict
 from os.path import join
 from sys import platform
 from Tkinter import BOTH, W, N, E, S, END, DISABLED, VERTICAL, LEFT, NONE  # Positions, States, and Directions
-from Tkinter import Tk, Text, Label, PhotoImage, Listbox, StringVar  # Elements
+from Tkinter import Tk, Text, Label, PhotoImage, Listbox  # Elements
 from ttk import Frame, Scrollbar, Style, Notebook, Separator, Button
 import tkMessageBox
 from Tkinter import Toplevel
@@ -29,7 +29,8 @@ class LunchHelperUI(Frame, object):
         notebook = Notebook(self.parent)
         self._tabs = OrderedDict((('Find restaurants', RestaurantsTab(notebook, self._db)),
                            ('Find people', PeopleTab(notebook, self._db)),
-                           ('Manage DB', DbTab(notebook, self._db))))
+                           ('Manage DB', DbTab(notebook, self._db)),
+                           ('Statistics', StatsTab(notebook, self._db))))
         for tab_name, tab in self._tabs.iteritems():
             notebook.add(tab, text=tab_name)
             tab.init_ui()
@@ -265,6 +266,63 @@ class DbTab(Tab):
         self.wait_window(dialogue)
 
 
+class StatsTab(Tab):
+    def init_ui(self):
+        self.least_chosen_restaurant = Label(self, text='Least chosen restaurant: ', font=(None, 0, 'bold'))
+        self.least_chosen_restaurant_val = Label(self,font=(None, 0, 'normal'))
+        self.most_chosen_restaurant = Label(self, text='Most chosen restaurant: ', font=(None, 0, 'bold'))
+        self.most_chosen_restaurant_val = Label(self, font=(None, 0, 'normal'))
+        self.least_picky_person = Label(self, text='Least picky person: ', font=(None, 0, 'bold'))
+        self.least_picky_person_val = Label(self, font=(None, 0, 'normal'))
+        self.most_picky_person = Label(self, text='Most picky person: ', font=(None, 0, 'bold'))
+        self.most_picky_person_val = Label(self, font=(None, 0, 'normal'))
+        self.total_people = Label(self, text='Total number of people: ', font=(None, 0, 'bold'))
+        self.total_people_val = Label(self, font=(None, 0, 'normal'))
+        self.total_restaurants = Label(self, text='Total number of restaurants: ', font=(None, 0, 'bold'))
+        self.total_restaurants_val = Label(self, font=(None, 0, 'normal'))
+
+    def layout_ui(self):
+        self.least_picky_person.grid(row=0, column=0, sticky=W + S)
+        self.least_picky_person_val.grid(row=0, column=1, sticky=W + S)
+        self.most_picky_person.grid(row=1, column=0, sticky=W + N)
+        self.most_picky_person_val.grid(row=1, column=1, sticky=W + N)
+        self.least_chosen_restaurant.grid(row=2, column=0, sticky=W + N)
+        self.least_chosen_restaurant_val.grid(row=2, column=1, sticky=W + N)
+        self.most_chosen_restaurant.grid(row=3, column=0, sticky=W + N)
+        self.most_chosen_restaurant_val.grid(row=3, column=1, sticky=W + N)
+        self.total_people.grid(row=4, column=0, sticky=W + N)
+        self.total_people_val.grid(row=4, column=1, sticky=W + N)
+        self.total_restaurants.grid(row=5, column=0, sticky=W + N)
+        self.total_restaurants_val.grid(row=5, column=1, sticky=W + N)
+
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(5, weight=6)
+        self.columnconfigure(2, weight=1)
+
+    def refresh(self):
+        self.least_picky_person_val.config(text=self._get_extramum_person(False))
+        self.most_picky_person_val.config(text=self._get_extramum_person(True))
+        self.most_chosen_restaurant_val.config(text=self._get_extramum_restaurant(True))
+        self.least_chosen_restaurant_val.config(text=self._get_extramum_restaurant(False))
+        self.total_restaurants_val.config(text=str(len(self._db.get_all_restaurants())))
+        self.total_people_val.config(text=str(len(self._db.get_all_people())))
+
+    def _get_extramum_restaurant(self, minimun):
+        try:
+            restaurant_and_number = self._db.get_extramum_restaurant(minimun)
+            return '%s (chosen by %s people)' % restaurant_and_number
+        except DB.DBException as e:
+            print e
+            return 'N/A'
+
+    def _get_extramum_person(self, minimun):
+        try:
+            person_and_number = self._db.get_extramum_person(minimun)
+            return "%s (chosen %s restaurants)" % person_and_number
+        except DB.DBException as e:
+            print e
+            return 'N/A'
+
 #######################################################################################
 ################################## User Dialogues #####################################
 #######################################################################################
@@ -383,9 +441,9 @@ class EditUserDialogue(UserDialogue):
         try:
             if person_name != self.user_name:
                 self._db.change_person_name(self.user_name, person_name)
+                self.parent.refresh()
             self._db.delete_all_restaurants_from_user(person_name)
             self._db.add_person_to_restaurants(person_name, selected_restaurants)
-            self.parent.refresh()
         except Exception as e:
             tkMessageBox.showerror("Editing person failed", "Operation failed!")
             print 'GOT AN EXCEPTION!' + str(e)
@@ -447,7 +505,6 @@ class DeleteUserDialogue(Toplevel, object): #TODO Eran dedup with DeleteRestaura
 #######################################################################################
 ################################## Restaurants Dialogues ##############################
 #######################################################################################
-#TODO: Add dialogue for editing restaurant name
 class RestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
     __metaclass__ = ABCMeta
     @abstractmethod

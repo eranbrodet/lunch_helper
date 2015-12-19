@@ -109,3 +109,30 @@ class DB(object):
             cur = self.con.execute("DELETE FROM person WHERE name=?", (name,))
             if cur.rowcount != 1:
                 raise DB.DBException("Person %s is not in database" % (name,))
+
+    def get_extramum_restaurant(self, minimum):
+        with self.con:
+            cur = self.con.execute("SELECT name, result FROM restaurant "
+                                   "LEFT OUTER JOIN (SELECT restaurant_id, COUNT(*) AS result "
+                                   "FROM person_to_restaurant "
+                                   "GROUP BY restaurant_id) "
+                                   "ON restaurant_id=restaurant.id "
+                                   "ORDER BY result %s LIMIT 1" % ('ASC' if minimum else 'DESC',))
+            res = cur.fetchone()
+            if not res:
+                raise DB.DBException("Can't fetch data")
+            return res[0], res[1] if res[1] else 0
+
+
+    def get_extramum_person(self, minimum):
+        with self.con:
+            cur = self.con.execute("SELECT name, result FROM person "
+                                   "LEFT OUTER JOIN (SELECT person_id, COUNT(*) AS result "
+                                   "FROM person_to_restaurant "
+                                   "GROUP BY person_id) "
+                                   "ON person_id=person.id "
+                                   "ORDER BY result %s LIMIT 1" % ('ASC' if minimum else 'DESC',))
+            res = cur.fetchone()
+            if not res:
+                raise DB.DBException("Can't fetch data")
+            return res[0], res[1] if res[1] else 0
