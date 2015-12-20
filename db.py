@@ -33,7 +33,7 @@ class DB(object):
             self._create_empty_db()
             db_changed = True
         else:
-            db_changed = self._upgrade_db():
+            db_changed = self._upgrade_db()
 
         if db_changed:
             self._write_settings()
