@@ -87,7 +87,7 @@ class RestaurantsTab(Tab):
 
         #right side of the window
         self.rightHandSide = Frame(self)
-        self.restaurants_list = Listbox(self.rightHandSide, exportselection=0, activestyle='none', background='white')
+        self.restaurants_list = Listbox(self.rightHandSide, exportselection=0, activestyle='none', background='white', font=('Tahoma', 8))
         self.restaurants_scrollbar = Scrollbar(self.rightHandSide, command=self.restaurants_list.yview)
         self.restaurants_list['yscrollcommand'] = self.restaurants_scrollbar.set
         self.restaurants_list.bind('<<ListboxSelect>>', self._view_restaurant)
