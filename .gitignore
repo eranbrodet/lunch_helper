@@ -1,0 +1,3 @@
+*.py[cod]
+lunch.db
+settings.json
