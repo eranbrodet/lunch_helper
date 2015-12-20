@@ -338,8 +338,8 @@ class StatsTab(Tab):
     def refresh(self):
         self.least_picky_person_val.config(text=self._get_extramum_person(False))
         self.most_picky_person_val.config(text=self._get_extramum_person(True))
-        self.most_chosen_restaurant_val.config(text=self._get_extramum_restaurant(True))
-        self.least_chosen_restaurant_val.config(text=self._get_extramum_restaurant(False))
+        self.most_chosen_restaurant_val.config(text=self._get_extramum_restaurant(False))
+        self.least_chosen_restaurant_val.config(text=self._get_extramum_restaurant(True))
         self.total_restaurants_val.config(text=str(len(self._db.get_all_restaurants())))
         self.total_people_val.config(text=str(len(self._db.get_all_people())))
 
