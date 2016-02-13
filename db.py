@@ -140,11 +140,11 @@ class DB(object):
 
     def get_all_people(self):
         with self.con:
-            return list(chain(*self.con.execute("SELECT name FROM person ORDER BY name ASC").fetchall()))
+            return list(chain(*self.con.execute("SELECT name FROM person ORDER BY name COLLATE NOCASE ASC").fetchall()))
 
     def get_all_restaurants(self):
         with self.con:
-            return list(chain(*self.con.execute("SELECT name FROM restaurant ORDER BY name ASC").fetchall()))
+            return list(chain(*self.con.execute("SELECT name FROM restaurant ORDER BY name COLLATE NOCASE ASC").fetchall()))
 
     def delete_restaurant(self, name):
         with self.con:
