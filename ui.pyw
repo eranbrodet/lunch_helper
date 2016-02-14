@@ -182,21 +182,53 @@ class RestaurantsTab(Tab):
         self.restaurant_details_name.config(text=restaurant_name)
         self.restaurant_details_comment.config(text=restaurant_comment)
 
+
 class PeopleTab(Tab):
     def init_ui(self):
-        self.coming_soon = Label(self, text='Coming soon')
+        self.restaurants_list = Listbox(self, exportselection=0, activestyle='none', font=('Tahoma', 10))
+        self.restaurants_list.bind("<<ListboxSelect>>", self._calc_list)
+        self.restaurants_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
+        self.restaurants_list['yscrollcommand'] = self.restaurants_scrollbar.set
+        self.people_list = Listbox(self, exportselection=0, activestyle='none', font=('Tahoma', 10))
+        self.people_scrollbar = Scrollbar(self, command=self.people_list.yview)
+        self.people_list['yscrollcommand'] = self.people_scrollbar.set
 
     def layout_ui(self):
-        self.coming_soon.pack(fill=BOTH, expand=1)
+        self.restaurants_list.grid(row=0, column=0, sticky=E + W + S + N)
+        self.restaurants_scrollbar.grid(row=0, column=1, sticky=E + W + S + N)
+        self.people_list.grid(row=0, column=2, sticky=E + W + S + N)
+        self.people_scrollbar.grid(row=0, column=3, sticky=E + W + S + N)
+
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(2, weight=5)
+        self.rowconfigure(0, weight=1)
 
     def refresh(self):
-        pass
+        self.restaurants_list.delete(0, END)
+        for item in self._db.get_all_restaurants():
+            self.restaurants_list.insert(END, item)
+        self._calc_list(None)
+
+    def _calc_list(self, event):
+        try:
+            indices = self.restaurants_list.curselection()
+            if len(indices) == 0:
+                raise Exception("Empty selection")
+            restaurant = self.restaurants_list.get(indices[0])
+            results = self._db.get_people_for_restaurant(restaurant)
+        except Exception as e:
+            print "exception", e
+            results = []
+
+        self.people_list.delete(0, END)
+        for item in results:
+            self.people_list.insert(END, item)
 
 
 class DbTab(Tab):
     def init_ui(self):
         self.choose_user_label = Label(self, text="Choose user", padx=5)
-        self.users_list = Listbox(self, selectmode='single', exportselection=0, activestyle='none', font=('Tahoma', 8))
+        self.users_list = Listbox(self, exportselection=0, activestyle='none', font=('Tahoma', 8))
         self.users_list_scrollbar = Scrollbar(self, command=self.users_list.yview)
         self.users_list.bind('<Double-Button-1>', self._user_list_doubleclick)
         self.users_list['yscrollcommand'] = self.users_list_scrollbar.set
@@ -207,7 +239,7 @@ class DbTab(Tab):
         self.separator = Separator(self, orient=VERTICAL)
 
         self.choose_restaurant_label = Label(self, text="Choose restaurant", padx=5)
-        self.restaurants_list = Listbox(self, selectmode='single', exportselection=0, activestyle='none', font=('Tahoma', 8))
+        self.restaurants_list = Listbox(self, exportselection=0, activestyle='none', font=('Tahoma', 8))
         self.restaurants_list.bind('<Double-Button-1>', self._restaurant_list_doubleclick)
         self.restaurants_list_scrollbar = Scrollbar(self, command=self.restaurants_list.yview)
         self.restaurants_list['yscrollcommand'] = self.restaurants_list_scrollbar.set

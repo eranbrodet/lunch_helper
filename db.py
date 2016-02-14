@@ -71,7 +71,7 @@ class DB(object):
             cur = self.con.execute("SELECT restaurant.name FROM restaurant "
                                    "JOIN person_to_restaurant ON restaurant.id = person_to_restaurant.restaurant_id "
                                    "JOIN person on person.id = person_to_restaurant.person_id "
-                                   "WHERE person.name=?;", (person,))
+                                   "WHERE person.name=? ORDER BY restaurant.name COLLATE NOCASE ASC;", (person,))
             names = cur.fetchall()
         return list(chain(*names))
 
@@ -80,7 +80,7 @@ class DB(object):
             cur = self.con.execute("SELECT person.name FROM restaurant "
                                    "JOIN person_to_restaurant ON restaurant.id = person_to_restaurant.restaurant_id "
                                    "JOIN person on person.id = person_to_restaurant.person_id "
-                                   "WHERE restaurant.name=?;", (restaurant,))
+                                   "WHERE restaurant.name=? ORDER BY person.name COLLATE NOCASE ASC;", (restaurant,))
             names = cur.fetchall()
         return list(chain(*names))
 

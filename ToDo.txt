@@ -1,4 +1,3 @@
-- Allow to enter a restaurant name and see who orders from there
 - Print comments field next to restaurant name
 - Add Blacklist (and and then recommand restaurants who are not in the black list of any of the people selected)
 - When you double click a restaurant in the find restaurants tab, it should take you to find people with this restaurant selected.
