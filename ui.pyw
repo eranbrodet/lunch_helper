@@ -94,7 +94,7 @@ class RestaurantsTab(Tab):
 
         self.restaurant_details = Frame(self.rightHandSide)
         self.restaurant_details_name = Label(self.restaurant_details, text='restaurant name here', font=('Tahoma', 12))
-        self.restaurant_details_comment = Label(self.restaurant_details, text='restaurant comment', justify=LEFT)
+        self.restaurant_details_comment = Label(self.restaurant_details, text='restaurant comment', justify=LEFT, font=('Tahoma', 10))
 
 
         self.daffy = Label(self.rightHandSide, bg="white")
@@ -592,7 +592,7 @@ class RestaurantDialogue(Toplevel, object): #TODO Eran dedup with user
         self.restaurant_label = Label(self, text="Restaurant Name:")
         self.restaurant_text = Text(self, height=1, width=18, wrap=NONE)
         self.restaurant_text.bind('<Return>', self._restaurant_text_enter)
-        self.comment_label = Label(self, text="Comment:")
+        self.comment_label = Label(self, text="Comment:", font=('Tahoma', 10))
         self.comment_text = Text(self, height=5, width=18, wrap=NONE)
         self.ok_button = Button(self, text="OK", command=self._ok_button)
         self.cancel_button = Button(self, text="Cancel", command=self._cancel_button)
