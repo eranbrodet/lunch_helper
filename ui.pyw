@@ -80,7 +80,7 @@ class Tab(Frame, object):
 class RestaurantsTab(Tab):
     def init_ui(self):
         #left side of the window
-        self.people_list = Listbox(self, selectmode='extended', exportselection=0, activestyle='none')
+        self.people_list = Listbox(self, selectmode='multiple', exportselection=0, activestyle='none')
         self.people_list.bind("<<ListboxSelect>>", self._calc_list)
         self.people_scrollbar = Scrollbar(self, command=self.people_list.yview)
         self.people_list['yscrollcommand'] = self.people_scrollbar.set
