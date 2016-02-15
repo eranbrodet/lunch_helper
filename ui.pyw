@@ -442,7 +442,7 @@ class UserDialogue(Toplevel, object):
         self.cancel_button.grid(row=3, column=2, sticky=W + S + N)
 
         # Fill up fields
-        available_restaurants = set(self._db.get_all_restaurants())
+        available_restaurants = self._db.get_all_restaurants()
         self.restaurants_list.delete(0, END)
         for item in available_restaurants:
             self.restaurants_list.insert(END, item)
