@@ -96,7 +96,6 @@ class RestaurantsTab(Tab):
         self.restaurant_details_name = Label(self.restaurant_details, text='restaurant name here', font=('Tahoma', 12))
         self.restaurant_details_comment = Label(self.restaurant_details, text='restaurant comment', justify=LEFT, font=('Tahoma', 10))
 
-
         self.daffy = Label(self.rightHandSide, bg="white")
         self.daffy.daffy = PhotoImage(file=join("images", 'daffy.gif'))
         self.daffy.daffy_i = PhotoImage(file=join("images", 'daffy_i.gif'))
@@ -121,7 +120,6 @@ class RestaurantsTab(Tab):
         # resizing of the right hand side
         self.rightHandSide.rowconfigure(0, weight=1)
         self.rightHandSide.columnconfigure(0, weight=1)
-
 
         self.restaurant_details_name.grid(row=0, column=0, sticky=W  + N)
         self.restaurant_details_comment.grid(row=1, column=0, sticky=W + N)
@@ -173,12 +171,17 @@ class RestaurantsTab(Tab):
             self.rightHandSide.rowconfigure(1, weight=0)
             self.restaurant_details.grid_forget()
             return
+        restaurant_name = self.restaurants_list.get(index).strip()
+        if restaurant_name == self.restaurant_details_name.cget('text'):
+            self.rightHandSide.rowconfigure(0, weight=1)
+            self.rightHandSide.rowconfigure(1, weight=0)
+            self.restaurant_details.grid_forget()
+            self.restaurant_details_name.config(text='')
+            return
         self.rightHandSide.rowconfigure(0, weight=1)
         self.rightHandSide.rowconfigure(1, weight=1)
         self.restaurant_details.grid(row=1, column=0, sticky=E + W + S + N)
-        restaurant_name = self.restaurants_list.get(index).strip()
         restaurant_comment = self._db.get_restaurant_comment(restaurant_name)
-
         self.restaurant_details_name.config(text=restaurant_name)
         self.restaurant_details_comment.config(text=restaurant_comment)
 
